@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -49,9 +50,33 @@ def is_noise(path: str, keep_tests: bool = False) -> bool:
     return any(p.search(path) for p in NOISE)
 
 
-def stream(repo_dir, since=None, until=None, first_parent=True, keep_tests=False, max_files=None):
+# git's messages when a fetch fails on the network (a partial clone's on-demand fetches included)
+NETWORK = re.compile(r"promisor remote|unable to access|could not resolve host|early eof|remote end hung up|"
+                     r"rpc failed|connection (reset|refused|timed out)|operation timed out", re.I)
+RETRY_WAITS = (10, 30, 90)   # seconds before each retry
+
+
+def git_log(args, waits=RETRY_WAITS, log=print) -> str:
+    """Run git log and return its output, retrying network failures. In a partial clone (--filter=blob:none),
+    --numstat downloads every file version it has not seen yet, in thousands of small fetches, so one dropped DNS
+    lookup used to end a long mining run. Versions already fetched stay in the clone, so a retry fetches only the
+    rest. Any other failure, and the last network one, raises with git's own message."""
+    for attempt, wait in enumerate((*waits, None), 1):
+        p = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if p.returncode == 0:
+            return p.stdout
+        err = p.stderr.strip()
+        if wait is None or not NETWORK.search(err):
+            raise RuntimeError(f"{' '.join(map(str, args))} failed with exit {p.returncode}:\n{err[-2000:]}")
+        log(f"git log: network error ({err.splitlines()[-1][:120]}); retry {attempt} of {len(waits)} in {wait}s")
+        time.sleep(wait)
+
+
+def stream(repo_dir, since=None, until=None, first_parent=True, keep_tests=False, max_files=None,
+           waits=RETRY_WAITS, log=print):
     """Yield commits {sha, ts, author, files:[(path, added, deleted)]} with noise removed; commits left with no
-    source file are dropped. max_files: commits touching more source files than this are dropped as bulk."""
+    source file are dropped. max_files: commits touching more source files than this are dropped as bulk.
+    Network failures while git fetches file versions are retried after each of `waits` seconds."""
     args = ["git", "-C", str(repo_dir), "log", "--numstat", "--format=@%H%x09%at%x09%an", "--no-renames"]
     if first_parent:
         args.append("--first-parent")
@@ -59,7 +84,7 @@ def stream(repo_dir, since=None, until=None, first_parent=True, keep_tests=False
         args.append(f"--since={since}")
     if until:
         args.append(f"--until={until}")
-    out = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", check=True, errors="replace").stdout
+    out = git_log(args, waits=waits, log=log)
     cur = None
     for line in out.splitlines():
         if line.startswith("@"):

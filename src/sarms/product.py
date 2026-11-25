@@ -52,7 +52,8 @@ def mine(repo, out=None, every=25, since=None, until=None, log=print):
     he, hc, comps, roots, sample, errors = scan_history(repo, every=every, until=until, log=lambda s: log("   " + s))
     longest = sorted(comps, key=len, reverse=True)
     log("[mine] change stream")
-    df = to_frame(stream(repo, since=since, max_files=None), roots=roots, component_of=lambda m: comp_of(m, longest))
+    df = to_frame(stream(repo, since=since, max_files=None, log=lambda s: log("   " + s)), roots=roots,
+                  component_of=lambda m: comp_of(m, longest))
     led = Ledger(sthg)
     n_h = led.ingest_stream(df, source_of=lambda a: "sensolens-sarms" if a == "sensolens-sarms" else "human") if len(df) else 0
     n_g = led.ingest_graph(he, hc)
