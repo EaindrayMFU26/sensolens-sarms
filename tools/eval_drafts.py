@@ -135,10 +135,10 @@ def main():
     ap.add_argument("--rules", help="judge the plants under another rule bundle (e.g. the learned soft rules)")
     a = ap.parse_args()
     pj = Path(a.plants_json)
-    meta = json.loads(pj.read_text())
+    meta = json.loads(pj.read_text(encoding="utf-8"))
     repo, rules_dir = Path(meta["repo"]), Path(a.rules or meta["rules_dir"])
     rms = Path(a.rms) if a.rms else pj.parent.parent
-    root = json.loads((rules_dir / "contracts.json").read_text())["session"]["root_packages"][0].split(".")[0]
+    root = json.loads((rules_dir / "contracts.json").read_text(encoding="utf-8"))["session"]["root_packages"][0].split(".")[0]
     plants = meta["plants"]
     if a.only:
         keep = {int(x) for x in a.only.split(",")}
@@ -167,7 +167,7 @@ def main():
                         continue
                     fdir = rms / "fi" / "oracle" / str(p["n"])
                     fdir.mkdir(parents=True, exist_ok=True)
-                    (fdir / "1.txt").write_text(reply)
+                    (fdir / "1.txt").write_text(reply, encoding="utf-8")
                     kw = {"base_url": f"fake:{fdir}", "model": "oracle"}
                 t0 = time.time()
                 res, out = draft_one(repo, p["sha"], rules_dir, rms, edge=p["edge"], tests=a.tests, tries=a.tries,
@@ -202,8 +202,8 @@ def main():
             lines.append(f"\n**{m}: {len(passed)}/{len(done)} drafts pass** ({len(done) - len(passed)} escalated).")
     md = "\n".join(lines) + "\n"
     out_md = pj.parent / f"results-{a.run_id}.md"
-    out_md.write_text(md)
-    with open(pj.parent / f"results-{a.run_id}.csv", "w", newline="") as fh:
+    out_md.write_text(md, encoding="utf-8")
+    with open(pj.parent / f"results-{a.run_id}.csv", "w", encoding="utf-8", newline="") as fh:
         keys = sorted({k for r in rows for k in r}, key=lambda k: (k not in ("n", "kind", "rule_kind", "edge", "sha", "detected", "new_violations"), k))
         w = csv.DictWriter(fh, fieldnames=keys)
         w.writeheader()

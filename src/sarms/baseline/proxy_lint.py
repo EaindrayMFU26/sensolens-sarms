@@ -115,7 +115,7 @@ def main():
         spec = {"pythonpath": pp, "session_options": session_here, "contracts": run_contracts, "cache_dir": str(cache)}
         try:
             p = subprocess.run([sys.executable, str(WORKER)], input=json.dumps(spec), capture_output=True,
-                               text=True, timeout=a.timeout, cwd=wt)
+                               text=True, encoding="utf-8", errors="replace", timeout=a.timeout, cwd=wt)
             res = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {"graph_error": p.stderr[-400:]}
         except subprocess.TimeoutExpired:
             res = {"graph_error": "timeout"}

@@ -13,7 +13,7 @@ from pathlib import Path
 def salt() -> str:
     s = os.environ.get("RMS_SALT")
     if not s and Path(".salt").exists():
-        s = Path(".salt").read_text().strip()
+        s = Path(".salt").read_text(encoding="utf-8").strip()
     if not s:
         sys.exit("No salt: put the team's secret in .salt (git-ignored) or set RMS_SALT.")
     return s

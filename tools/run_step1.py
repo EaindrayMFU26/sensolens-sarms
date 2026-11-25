@@ -26,12 +26,12 @@ from sarms.core.paths import repo_name
 def run(label, cmd, log):
     t0 = time.time()
     print(f"== {label}: {' '.join(cmd)}", flush=True)
-    p = subprocess.run(cmd, text=True, capture_output=True)
+    p = subprocess.run(cmd, text=True, encoding="utf-8", errors="replace", capture_output=True)
     dt = time.time() - t0
-    (log.parent / f"{label}.log").write_text(p.stdout + p.stderr)
+    (log.parent / f"{label}.log").write_text(p.stdout + p.stderr, encoding="utf-8")
     tail = (p.stdout.strip().splitlines() or [""])[-1]
     print(f"   {dt:.0f}s  {tail}" + ("" if p.returncode == 0 else f"  [exit {p.returncode}] see {log.parent / (label + '.log')}"), flush=True)
-    with open(log, "a", newline="") as fh:
+    with open(log, "a", encoding="utf-8", newline="") as fh:
         csv.writer(fh).writerow([label, f"{dt:.1f}", p.returncode])
     return p.returncode
 

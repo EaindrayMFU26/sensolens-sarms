@@ -46,8 +46,8 @@ def _fake(base_url, call_no):
         files = sorted(src.glob("*.txt"))
         if not files:
             raise LLMError(f"fake model: no .txt replies in {src}")
-        return files[min(call_no, len(files) - 1)].read_text()
-    return src.read_text()
+        return files[min(call_no, len(files) - 1)].read_text(encoding="utf-8")
+    return src.read_text(encoding="utf-8")
 
 
 def complete(prompt, system=None, model=None, base_url=None, api_key=None, temperature=0.0, timeout=900, call_no=0):

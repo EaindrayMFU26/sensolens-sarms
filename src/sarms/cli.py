@@ -46,6 +46,9 @@ COMMANDS: dict[str, tuple[str, list[str]]] = {
 
 
 def main() -> None:
+    for stream in (sys.stdout, sys.stderr):  # a character the console's code page lacks prints as "?", never crashes
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     argv = sys.argv[1:]
     if not argv or argv[0] in ("-h", "--help") or argv[0] not in COMMANDS:
         print(__doc__)

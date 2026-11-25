@@ -25,16 +25,16 @@ BOT = ["-c", "user.name=sensolens-sarms", "-c", "user.email=sensolens-sarms@sarm
 
 def apply_decision(repo_dir, record_path, draft_dir, ledger=None, branch="sarms/fixes", onto=None, push=False, log=print):
     repo_dir, record_path, draft_dir = Path(repo_dir).resolve(), Path(record_path), Path(draft_dir)
-    record = json.loads(record_path.read_text())
+    record = json.loads(record_path.read_text(encoding="utf-8"))
     if record["verdict"] != "accept":
         if ledger:
-            ledger.record_action(record["sha"], "escalate", (json.loads((draft_dir / "result.json").read_text()).get("violation") or {}).get("rule_id"),
+            ledger.record_action(record["sha"], "escalate", (json.loads((draft_dir / "result.json").read_text(encoding="utf-8")).get("violation") or {}).get("rule_id"),
                                  {"decision": str(record_path), "stopped_at": record.get("stopped_at")})
         log(f"kernel: nothing applied (verdict {record['verdict']}, stopped at {record.get('stopped_at')})")
         return None
     if not verify_signature(record, _salt(repo_dir)):
         raise PermissionError("decision record signature does not verify; the kernel refuses")
-    patch = (draft_dir / "patch.diff").read_text()
+    patch = (draft_dir / "patch.diff").read_text(encoding="utf-8")
     base = record["sha"]
     target = onto or branch
     # work on a detached worktree so the developer's checkout is never touched
@@ -43,18 +43,18 @@ def apply_decision(repo_dir, record_path, draft_dir, ledger=None, branch="sarms/
     git(repo_dir, "worktree", "prune", check=False)
     subprocess.run(["git", "-C", str(repo_dir), "worktree", "add", "--detach", "-f", str(wt), base], check=True, capture_output=True)
     try:
-        r = subprocess.run(["git", "-C", str(wt), "apply", "--whitespace=nowarn", "-"], input=patch, text=True, capture_output=True)
+        r = subprocess.run(["git", "-C", str(wt), "apply", "--whitespace=nowarn", "-"], input=patch, text=True, encoding="utf-8", errors="replace", capture_output=True)
         if r.returncode != 0:
             raise RuntimeError("patch does not apply on the base commit: " + r.stderr[-300:])
         subprocess.run(["git", "-C", str(wt), "add", "-A"], check=True, capture_output=True)
-        v = json.loads((draft_dir / "result.json").read_text()).get("violation") or {}
+        v = json.loads((draft_dir / "result.json").read_text(encoding="utf-8")).get("violation") or {}
         msg = (f"sarms: {v.get('edge_from')} must not import {v.get('edge_to')} ({v.get('rule_id')})\n\n"
                f"Decision record: {record_path.name}\nGate: G0-G8 pass, verifier {record['verifier_version']}, policy {record['policy_version']}\n"
                f"Revert with: git revert <this commit>\n")
         subprocess.run(["git", "-C", str(wt), *BOT, "commit", "-q", "-m", msg], check=True, capture_output=True)
         fix = git(wt, "rev-parse", "HEAD").strip()
         # G7 once more, on the real commit
-        chk = subprocess.run(["git", "-C", str(wt), *BOT, "revert", "--no-edit", fix], capture_output=True, text=True)
+        chk = subprocess.run(["git", "-C", str(wt), *BOT, "revert", "--no-edit", fix], capture_output=True, text=True, encoding="utf-8", errors="replace")
         if chk.returncode != 0 or git(wt, "diff", base, "--", ".", check=False).strip():
             raise RuntimeError("the applied commit does not revert cleanly; refusing to land it")
         subprocess.run(["git", "-C", str(wt), "reset", "-q", "--hard", fix], check=True, capture_output=True)
@@ -75,7 +75,7 @@ def apply_decision(repo_dir, record_path, draft_dir, ledger=None, branch="sarms/
     finally:
         subprocess.run(["git", "-C", str(repo_dir), "worktree", "remove", "--force", str(wt)], capture_output=True)
     record["applied_commit"] = fix
-    record_path.write_text(json.dumps(record, indent=1, default=str))
+    record_path.write_text(json.dumps(record, indent=1, default=str), encoding="utf-8")
     if ledger:
         ledger.record_action(base, "apply", v.get("rule_id"), {"commit": fix, "branch": target, "decision": str(record_path),
                                                               "from": v.get("edge_from"), "to": v.get("edge_to")})
@@ -86,7 +86,7 @@ def apply_decision(repo_dir, record_path, draft_dir, ledger=None, branch="sarms/
 def revert_own_commit(repo_dir, fix_sha, ledger=None, log=print):
     """Undo a system commit with one revert (what a developer would also do by hand)."""
     repo_dir = Path(repo_dir).resolve()
-    r = subprocess.run(["git", "-C", str(repo_dir), *BOT, "revert", "--no-edit", fix_sha], capture_output=True, text=True)
+    r = subprocess.run(["git", "-C", str(repo_dir), *BOT, "revert", "--no-edit", fix_sha], capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise RuntimeError(r.stderr[-300:])
     new = git(repo_dir, "rev-parse", "HEAD").strip()

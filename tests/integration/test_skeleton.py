@@ -25,7 +25,7 @@ def test_pseudonym_is_salted(monkeypatch, tmp_path):
 
 
 def test_spec_validates():
-    r = subprocess.run([sys.executable, "tools/validate_spec.py"], capture_output=True, text=True)
+    r = subprocess.run([sys.executable, "tools/validate_spec.py"], capture_output=True, text=True, encoding="utf-8", errors="replace")
     assert r.returncode == 0, r.stdout + r.stderr
 
 
@@ -55,8 +55,8 @@ def test_graph_extract_on_ourselves(tmp_path):
 
     out = tmp_path / "g"
     p = subprocess.run([sys.executable, "-m", "sarms.graph.extract", ".", "--sha", "HEAD", "--root", "sarms", "--src", "src", "--out", str(out)],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
     assert p.returncode == 0, p.stderr
-    s = json.loads((out / "summary.json").read_text())
+    s = json.loads((out / "summary.json").read_text(encoding="utf-8"))
     assert s["modules"] >= 10 and (out / "edges.csv").exists() and (out / "packages.dot").exists()
     assert s["hubs_by_fan_in"][0]["module"].startswith("sarms")

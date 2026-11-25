@@ -140,7 +140,7 @@ def main():
 
     P = edges[edges.package_from != edges.package_to].groupby(["package_from", "package_to"]).size().reset_index(name="n_imports")
     P.to_csv(out / "packages.csv", index=False)
-    with open(out / "packages.dot", "w") as fh:
+    with open(out / "packages.dot", "w", encoding="utf-8") as fh:
         fh.write(f'digraph "{name}@{sha[:8]}" {{\n  rankdir=LR; node [shape=box, fontname=Helvetica];\n')
         for r in P.itertuples(index=False):
             fh.write(f'  "{r.package_from}" -> "{r.package_to}" [label="{r.n_imports}"];\n')
@@ -154,8 +154,8 @@ def main():
                "largest_cycle_members": sccs[0][:40] if sccs else [],
                "top_level_unassigned": top_unassigned,
                "hubs_by_fan_in": [{"module": m, "in_degree": int(d)} for m, d in zip(hubs.module, hubs.in_degree, strict=True)]}
-    (out / "summary.json").write_text(json.dumps(summary, indent=2))
-    with open(out / "README.txt", "w") as fh:
+    (out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    with open(out / "README.txt", "w", encoding="utf-8") as fh:
         fh.write(__doc__.split("Builds", 1)[1])
     print(f"{name}@{sha[:8]}: {summary['modules']} modules, {summary['edges']} import statements "
           f"({summary['distinct_module_edges']} module edges), {summary['packages']} packages, {summary['cycles']} cycles "

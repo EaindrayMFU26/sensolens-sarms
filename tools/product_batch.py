@@ -66,7 +66,7 @@ def main():
                 cmd += ["--since", a.since]
             if a.tests:
                 cmd += ["--tests", a.tests]
-            p = subprocess.run(cmd, capture_output=True, text=True, timeout=a.timeout)
+            p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=a.timeout)
             rms = Path("data") / name / "rms"
             rms.mkdir(parents=True, exist_ok=True)
             (rms / "batch.log").write_text(p.stdout + "\n--- stderr ---\n" + p.stderr, encoding="utf-8")
@@ -76,7 +76,7 @@ def main():
                 append(a.out, {**row, "status": "run_failed", "seconds": round(time.time() - t0),
                                "note": (tail[0] if tail else "")[:200]})
                 continue
-            r = json.loads(rj.read_text())
+            r = json.loads(rj.read_text(encoding="utf-8"))
             outc = r["outcomes"]
             append(a.out, {**row, "status": "ok", "head": r["head"][:12], "written_rules": r["rules"]["written"],
                            "certified_rules": r["rules"]["certified"], "verified": r["rules"]["verified"],

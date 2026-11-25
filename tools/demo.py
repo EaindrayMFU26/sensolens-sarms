@@ -78,7 +78,7 @@ def main():
     if graphs:
         head(f"5. THE IMPORT GRAPH THE SYSTEM READS                    (data/{a.repo}/graph/)")
         for g in graphs:
-            s = json.loads(g.read_text())
+            s = json.loads(g.read_text(encoding="utf-8"))
             when = c.loc[c.sha == s["sha"], "ts"]
             label = f"{when.iloc[0]:%d %b %Y}" if len(when) else s["sha"][:8]
             print(f"  {label}: {s['modules']} modules, {s['distinct_module_edges']} imports, "
@@ -89,7 +89,7 @@ def main():
     runs = sorted((d / "rms" / "differ").glob("*/differ.json")) if (d / "rms" / "differ").exists() else []
     if runs:
         head(f"6. THE LIVE LOOP - what the system itself says today      (data/{a.repo}/rms/)")
-        r = json.loads(max(runs, key=lambda p: p.stat().st_mtime).read_text())
+        r = json.loads(max(runs, key=lambda p: p.stat().st_mtime).read_text(encoding="utf-8"))
         viol = [x for x in r["rows"] if x["label"] != "CONFIRMED"]
         print(f"  rules compiled from the team's contracts, checked on commit {r['sha'][:8]} in {r.get('seconds', '?')} s:")
         print(f"  {len(viol)} broken rules ({sum(x['acknowledged'] for x in viol)} on the team's 'ignore this' list), "
@@ -99,7 +99,7 @@ def main():
                 print(f"    direct: {x['edge_from']} -> {x['edge_to']}  ({len(x['lines'])} import line(s) in {x['lines'][0]['edge'].split('->')[0] if x['lines'] else '?'})")
         drafts = sorted((d / "rms" / "drafts").glob("*/result.json")) if (d / "rms" / "drafts").exists() else []
         for f in drafts:
-            res = json.loads(f.read_text())
+            res = json.loads(f.read_text(encoding="utf-8"))
             v = res["violation"]
             last = res["attempts"][-1] if res["attempts"] else {}
             model = (last.get("model") or {}).get("model", res["class"])

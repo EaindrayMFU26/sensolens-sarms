@@ -28,7 +28,7 @@ def main():
     ap.add_argument("--title")
     a = ap.parse_args()
     g = Path(a.graph_dir)
-    s = json.loads((g / "summary.json").read_text())
+    s = json.loads((g / "summary.json").read_text(encoding="utf-8"))
     pk = pd.read_csv(g / "packages.csv")
     mods = pd.read_csv(g / "modules.csv")
     unassigned = set(mods[mods.is_unassigned.fillna(False).astype(bool) & (mods.module.str.count(r"\.") == 1)].module)
@@ -62,7 +62,7 @@ def main():
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     dot = out.with_suffix(".dot")
-    dot.write_text("\n".join(lines))
+    dot.write_text("\n".join(lines), encoding="utf-8")
     if not shutil.which("dot"):
         print(f"wrote {dot}; Graphviz not found, so no image (install it and rerun, or paste the .dot into an online viewer)")
         return

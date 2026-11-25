@@ -58,7 +58,7 @@ tag = "learn"
 if a.pre_contract:
     if not record.exists():
         sys.exit("--pre-contract needs data/REPO/record/contracts.csv")
-    intro = min(pd.Timestamp(r["introduced_at"]) for r in csv.DictReader(open(record)) if r["introduced_at"])
+    intro = min(pd.Timestamp(r["introduced_at"]) for r in csv.DictReader(open(record, encoding="utf-8")) if r["introduced_at"])
     before = git(raw, "rev-list", "-n1", "--first-parent", f"--before={intro.isoformat()}", resolve_ref(raw)).strip()
     if not before:
         sys.exit(f"no commit before the first contract ({intro:%Y-%m-%d}); nothing to learn from")
@@ -133,7 +133,7 @@ res = {"repo": a.owner_repo, "setting": "pre-contract" if a.pre_contract else "f
        "sampled_commits": meta["sampled"], "window": f"{meta['first_ts'][:10]} .. {meta['last_ts'][:10]}",
        "components": len(comps), "all": summarize(graded),
        "adopted": summarize(graded[graded.adopt] if len(graded) else graded), "min_evidence": a.min_evidence}
-(out / "eval.json").write_text(json.dumps(res, indent=1))
+(out / "eval.json").write_text(json.dumps(res, indent=1), encoding="utf-8")
 
 print(f"\n{a.owner_repo} — {res['setting']} — {meta['sampled']} commits sampled ({res['window']}), {len(comps)} components")
 print(f"hard rules: {len(hard)} forbidden pairs, {len(hard_known)} between components the learner can see")
@@ -158,9 +158,9 @@ headhdr = ["# Hidden-contract benchmark: learned rules vs the team's written rul
            "`pre-contract` learns only from commits before the first contract existed (no CI enforcement shaping the history).", "",
            "| Repository | setting | commits sampled | components | hard pairs (all / visible) | adopted | precision | recall | all candidates | precision | recall |",
            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
-old = summary.read_text().splitlines() if summary.exists() else []
+old = summary.read_text(encoding="utf-8").splitlines() if summary.exists() else []
 body = [ln for ln in old if ln.startswith("| ") and not ln.startswith("| Repository") and not ln.startswith("| ---")]
 body = [ln for ln in body if not ln.startswith(f"| {a.owner_repo} | {res['setting']} |")] + [line]
 summary.parent.mkdir(exist_ok=True)
-summary.write_text("\n".join(headhdr + body) + "\n")
+summary.write_text("\n".join(headhdr + body) + "\n", encoding="utf-8")
 print(f"-> {out / 'eval.json'} ; {summary}")

@@ -40,7 +40,7 @@ def written_rules(learn_dir: Path):
     for f in (learn_dir / "hard-rules-for-grading").glob("*.yaml"):
         if f.name == "acknowledged.yaml":
             continue
-        for r in yaml.safe_load(f.read_text()) or []:
+        for r in yaml.safe_load(f.read_text(encoding="utf-8")) or []:
             if not isinstance(r, dict):
                 continue
             if r["kind"] == "forbidden" and r.get("evaluable", True) and "*" not in r["from"] + r["to"]:
@@ -64,7 +64,7 @@ def run(repo: str, days: int, split: float, epochs: int, log=print, since=None):
     raw, learn = Path("data/raw") / repo, Path("data") / repo / "rms" / "learn"
     out = Path("data") / repo / "rms" / "track-c"
     out.mkdir(parents=True, exist_ok=True)
-    meta = json.loads((learn / "learn.json").read_text())
+    meta = json.loads((learn / "learn.json").read_text(encoding="utf-8"))
     comps = sorted(meta["components"], key=len, reverse=True)
     log(f"## {repo}: streaming git log")
     df = to_frame(stream(raw, max_files=50, since=since), roots=meta["roots"], component_of=lambda m: comp_of(m, comps))
@@ -194,7 +194,7 @@ def run(repo: str, days: int, split: float, epochs: int, log=print, since=None):
            "feedback_outcomes": dict(outcomes), "decision_changes": sum(len(t["events"]) for t in timeline), "coupling_anomalies_future": anomalies,
            "grades": {k: dict(v) for k, v in grades.items()}, "future_crossings": crossings,
            "enforced_rules": sorted(f"{a} -> {b}" for a, b in final_enforced)}
-    (out / "track-c.json").write_text(json.dumps({**res, "assessed": {f"{a} -> {b}": s for (a, b), s in state.items()}, "timeline": timeline}, indent=1, default=str))
+    (out / "track-c.json").write_text(json.dumps({**res, "assessed": {f"{a} -> {b}": s for (a, b), s in state.items()}, "timeline": timeline}, indent=1, default=str), encoding="utf-8")
     return res
 
 
@@ -211,7 +211,7 @@ def main():
     for r in a.repos:
         prev = Path("data") / r / "rms" / "track-c" / "track-c.json"
         if prev.exists() and not a.redo:
-            d = json.loads(prev.read_text())
+            d = json.loads(prev.read_text(encoding="utf-8"))
             results.append({k: v for k, v in d.items() if k not in ("assessed", "timeline")})
             print(f"{r}: reusing {prev}", flush=True)
             continue
@@ -221,7 +221,7 @@ def main():
             results.append({"repo": r, "status": f"error {type(e).__name__}: {str(e)[:120]}"})
         print(json.dumps(results[-1], indent=1, default=str)[:1500], flush=True)
     Path("reports").mkdir(exist_ok=True)
-    (Path("reports") / "track-c.json").write_text(json.dumps(results, indent=1, default=str))
+    (Path("reports") / "track-c.json").write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
     ok = [r for r in results if r.get("status") == "ok"]
     L = ["# Track C in production replay (learn on the first 70% of each repository, enforce on the last 30%)", "",
          "| repo | commits (filtered) | split | co-change couplings > .35 | layer candidates | critical hotspots | hotspot persistence | hgnn 0.98 rules | hgnn vs count MAE | drift events (future) | DS enforced initial → final | future crossings of enforced (kept / repaired) | written / contradicted among final |",
@@ -244,7 +244,7 @@ def main():
         n = tot[f"{k}_n"] or 1
         L.append(f"| {k} | {tot[f'{k}_n']} | {tot[f'{k}_written']} ({100 * tot[f'{k}_written'] / n:.0f}%) | {tot[f'{k}_contradicted']} | {tot[f'{k}_kept']} | {tot[f'{k}_rep']} |")
     L += ["", "Skipped: " + ", ".join(f"{r['repo']} ({r['status']})" for r in results if r.get("status") != "ok")]
-    (Path("reports") / "track-c.md").write_text("\n".join(L) + "\n")
+    (Path("reports") / "track-c.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n".join(L))
 
 

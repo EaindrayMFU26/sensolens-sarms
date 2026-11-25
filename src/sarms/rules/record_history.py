@@ -69,7 +69,7 @@ def history(repo_path, branch, out_dir, since=None, extra_paths=(), config=None)
     fname, text = find_il_config(repo_path, head, files)
     if fname:
         ext = "toml" if fname.endswith(".toml") else "cfg"
-        (out / f"importlinter.HEAD.{ext}").write_text(text)
+        (out / f"importlinter.HEAD.{ext}").write_text(text, encoding="utf-8")
     window = [f"--since={since}"] if since else []
     touched = git(repo_path, "log", "--first-parent", "--reverse", "--format=%H", *window, ref, "--",
                   *files, *extra_paths).split()
@@ -112,7 +112,7 @@ def history(repo_path, branch, out_dir, since=None, extra_paths=(), config=None)
     if len(df):
         df["ts"] = pd.to_datetime(df["ts"], utc=True)
     df.to_parquet(out / "events.parquet", index=False)
-    with open(out / "contracts.csv", "w", newline="") as fh:
+    with open(out / "contracts.csv", "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["contract", "type", "introduced_sha", "introduced_at"])
         for n, c in (prev or {}).items():

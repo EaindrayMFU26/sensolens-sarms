@@ -248,4 +248,4 @@ def save(fit, out_dir: Path, coupling, layer, forward):
     pd.DataFrame(fit["matrix"], index=fit["nodes"], columns=fit["nodes"]).to_csv(out_dir / "architecture_matrix.csv")
     (out_dir / "hgnn.json").write_text(json.dumps({"windows": fit["windows"], "n_train_windows": fit["n_train_windows"], "errors": fit["errors"],
                                                    "drift_events": fit["drift_events"], "structural_drift": fit["structural_drift"],
-                                                   "coupling_rules": coupling, "layer_candidates": layer, "forward": forward}, indent=1, default=str))
+                                                   "coupling_rules": coupling, "layer_candidates": layer, "forward": forward}, indent=1, default=str), encoding="utf-8")

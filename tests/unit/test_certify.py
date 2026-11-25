@@ -80,10 +80,10 @@ def write_rules(tmp, rules, certs):
     import yaml
     rd = tmp / "rules"
     rd.mkdir(exist_ok=True)
-    (rd / "soft.yaml").write_text(yaml.safe_dump(rules, sort_keys=False))
+    (rd / "soft.yaml").write_text(yaml.safe_dump(rules, sort_keys=False), encoding="utf-8")
     ok, witness = C.consistency([(r["from"], r["to"]) for r in rules])
     (rd / "certificates.json").write_text(json.dumps({"spec": "sarms rule correctness v1 (A1-A6)", "A5_consistency": {"holds": ok, **witness},
-                                                      "certified": sorted(f"{r['from']} -> {r['to']}" for r in rules), "rules": certs}))
+                                                      "certified": sorted(f"{r['from']} -> {r['to']}" for r in rules), "rules": certs}), encoding="utf-8")
     return rd
 
 
@@ -117,20 +117,20 @@ def test_tampered_certificate_is_rejected(tmp_path):
     rules, certs = certified_rules(tmp_path)
     assert rules
     rd = write_rules(tmp_path, rules, certs)
-    doc = json.loads((rd / "certificates.json").read_text())
+    doc = json.loads((rd / "certificates.json").read_text(encoding="utf-8"))
     rid = next(iter(doc["rules"]))
     doc["rules"][rid]["per_commit"][0]["margin"] = 0.99          # forged evidence
-    (rd / "certificates.json").write_text(json.dumps(doc))
+    (rd / "certificates.json").write_text(json.dumps(doc), encoding="utf-8")
     ok, failures = C.verify(tmp_path, rd, log=lambda s: None)
     assert not ok and any(rid == f[0] for f in failures)
     # a rule smuggled in without satisfying the axioms is rejected too
-    doc = json.loads((rd / "certificates.json").read_text())
+    doc = json.loads((rd / "certificates.json").read_text(encoding="utf-8"))
     a, b = doc["rules"][rid]["from"], doc["rules"][rid]["to"]
     doc["rules"][rid]["per_commit"][0]["margin"] = C.evaluate(C.load_history(tmp_path), a, b)[0][0]["margin"]
     doc["rules"]["R-sim-forged"] = {"from": b, "to": a, "constants": doc["rules"][rid]["constants"],
                                     "axioms": dict.fromkeys(C.AXIOMS[:4] + ("A6_safety",), True), "summary": {}, "per_commit": []}
     doc["certified"].append(f"{b} -> {a}")
-    (rd / "certificates.json").write_text(json.dumps(doc))
+    (rd / "certificates.json").write_text(json.dumps(doc), encoding="utf-8")
     ok, failures = C.verify(tmp_path, rd, log=lambda s: None)
     assert not ok
 

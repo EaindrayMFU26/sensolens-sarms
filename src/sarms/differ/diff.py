@@ -266,8 +266,8 @@ def diff_commit(repo_dir, sha=None, rules_dir=None, out_dir=None, src=None, tree
         out = Path(out_dir) if out_dir else repo_dir / ".rms"
         d = out / "differ" / sha[:12]
         d.mkdir(parents=True, exist_ok=True)
-        (d / "differ.json").write_text(json.dumps(result, indent=1, default=str))
-        (d / "differ.sarif").write_text(json.dumps(sarif(result, repo_label or repo_dir.name, tree), indent=1))
+        (d / "differ.json").write_text(json.dumps(result, indent=1, default=str), encoding="utf-8")
+        (d / "differ.sarif").write_text(json.dumps(sarif(result, repo_label or repo_dir.name, tree), indent=1), encoding="utf-8")
         result["paths"] = {"json": str(d / "differ.json"), "sarif": str(d / "differ.sarif")}
     return result
 

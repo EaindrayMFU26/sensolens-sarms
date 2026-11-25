@@ -26,7 +26,7 @@ def check(name, cond, detail=""):
     ok &= bool(cond)
 
 
-voc = (S / "vocabulary.md").read_text()
+voc = (S / "vocabulary.md").read_text(encoding="utf-8")
 for words, n, what in ((["CONFIRMED", "MISSING", "ADDITIONAL", "INVERTED"], 4, "Differ labels"),
                        (["Unassigned module", "New cycle", "Hub fan-in growth"], 3, "drift indicators"),
                        (["requirement realization", "documentation lag", "implementation choice",
@@ -37,18 +37,18 @@ rows = [line for line in voc.splitlines() if line.startswith("| ") and re.match(
 check("vocabulary.md: every Differ label has an example column filled",
       all(line.rstrip(" |").split("|")[-1].strip() for line in rows))
 
-gate = (S / "gate.md").read_text()
+gate = (S / "gate.md").read_text(encoding="utf-8")
 lines = sorted(set(re.findall(r"^\| (G[0-8]) \|", gate, re.M)))
 check("gate.md: G0..G8 present", lines == [f"G{i}" for i in range(9)], str(lines))
 
-rs = yaml.safe_load((S / "rules.schema.yaml").read_text())
+rs = yaml.safe_load((S / "rules.schema.yaml").read_text(encoding="utf-8"))
 jsonschema.Draft202012Validator.check_schema(rs)
 check("rules.schema.yaml is a valid schema", True)
 for ex in rs.get("examples", []):
     errs = [e.message for e in jsonschema.Draft202012Validator(rs).iter_errors(ex)]
     check(f"example rule {ex.get('id')} validates", not errs, "; ".join(errs))
 
-dr = json.loads((S / "decision-record.schema.json").read_text())
+dr = json.loads((S / "decision-record.schema.json").read_text(encoding="utf-8"))
 jsonschema.Draft202012Validator.check_schema(dr)
 check("decision-record.schema.json is a valid schema", True)
 sample = {"sha": "0" * 40, "verdict": "accept", "class": "move_to_layer",
@@ -60,7 +60,7 @@ check("a sample decision record validates", not errs, "; ".join(errs))
 
 try:
     con = duckdb.connect()
-    con.execute((S / "ledger.sql").read_text())
+    con.execute((S / "ledger.sql").read_text(encoding="utf-8"))
     t = {r[0] for r in con.execute("select table_name from information_schema.tables").fetchall()}
     check("ledger.sql loads (table ledger + view awareness_gap)", {"ledger", "awareness_gap"} <= t, str(t))
 except Exception as e:

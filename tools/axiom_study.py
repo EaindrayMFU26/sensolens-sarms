@@ -81,7 +81,7 @@ def main():
           "| repo | adopted | strict | certified | certified written | certified contradicted |", "| --- | --- | --- | --- | --- | --- |"]
     for r in df.sort_values("certified_n", ascending=False).head(20).to_dict("records"):
         L.append(f"| {r['repo']}{' (held out)' if r['held_out'] else ''} | {r['adopted_n']} | {r['strict_n']} | {r['certified_n']} | {r['certified_written']} | {r['certified_contradicted']} |")
-    Path("reports/axiom-study.md").write_text("\n".join(L) + "\n")
+    Path("reports/axiom-study.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n".join(L))
 
 

@@ -231,7 +231,7 @@ def main():
             print(f"  planted #{n} {rec['kind']:8s} {rec['rule_kind']:18s} {rec['edge'] or '-':55s} {rec['sha'][:12]}")
     meta = {"repo": str(repo), "head": head, "branch": branch, "worktree": str(copy), "seed": a.seed,
             "run_id": a.run_id, "rules_dir": str(rules_dir), "plants": plants}
-    (out / "plants.json").write_text(json.dumps(meta, indent=1))
+    (out / "plants.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     print(f"{len(plants)} plants on {branch}-1..{n} (one branch each, all from {head[:12]}) -> {out / 'plants.json'}")
 
 

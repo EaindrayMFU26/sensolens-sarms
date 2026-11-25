@@ -47,11 +47,11 @@ def scan(repo):
 
 
 def main():
-    repos = [x.split("#")[0].strip() for x in open(sys.argv[1]) if x.split("#")[0].strip()]
+    repos = [x.split("#")[0].strip() for x in open(sys.argv[1], encoding="utf-8") if x.split("#")[0].strip()]
     with cf.ThreadPoolExecutor(24) as ex:
         res = list(ex.map(scan, repos))
     hits = [r for r in res if any(v == "importlinter" for v in r["files"].values())]
-    json.dump(res, open("data/rawscan.json", "w"), indent=1)
+    json.dump(res, open("data/rawscan.json", "w", encoding="utf-8"), indent=1)
     print(f"scanned {len(res)}; import-linter at root: {len(hits)}")
     for r in sorted(hits, key=lambda r: -r["contracts"]):
         files = [k for k, v in r["files"].items() if v == "importlinter"]

@@ -59,7 +59,7 @@ def stream(repo_dir, since=None, until=None, first_parent=True, keep_tests=False
         args.append(f"--since={since}")
     if until:
         args.append(f"--until={until}")
-    out = subprocess.run(args, capture_output=True, text=True, check=True, errors="replace").stdout
+    out = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", check=True, errors="replace").stdout
     cur = None
     for line in out.splitlines():
         if line.startswith("@"):

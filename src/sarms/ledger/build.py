@@ -36,7 +36,7 @@ VIOLATION = ("ADDITIONAL", "INVERTED", "MISSING")
 def read_intro(record_csv):
     intro = {}
     if record_csv and Path(record_csv).exists():
-        for r in csv.DictReader(open(record_csv)):
+        for r in csv.DictReader(open(record_csv, encoding="utf-8")):
             if r.get("introduced_at"):
                 intro[r["contract"]] = pd.Timestamp(r["introduced_at"]).tz_convert("UTC")
     return intro
@@ -155,7 +155,7 @@ def build(rms_dir, repo, record_csv=None, from_replay_dir=None, suffix=""):
     if db.exists():
         db.unlink()
     con = duckdb.connect(str(db))
-    con.execute(DDL.read_text())
+    con.execute(DDL.read_text(encoding="utf-8"))
     con.register("led_df", led)
     con.execute("INSERT INTO ledger SELECT * FROM led_df")
     con.register("ep_df", ep)

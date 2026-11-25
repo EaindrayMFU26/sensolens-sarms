@@ -38,7 +38,7 @@ def replies(tmp_path, *texts):
     d = tmp_path / "replies"
     d.mkdir()
     for n, t in enumerate(texts, 1):
-        (d / f"{n}.txt").write_text(t)
+        (d / f"{n}.txt").write_text(t, encoding="utf-8")
     return d
 
 
@@ -62,10 +62,10 @@ def test_the_same_fix_is_refused_and_another_route_is_taken(reverted_repo, tmp_p
     undone = reverted_fixes(repo)
     result, d = draft_one(repo, rules_dir=rules, rms_dir=rms, base_url=f"fake:{replies(tmp_path, REPLY_A, REPLY_B)}",
                           reverted=undone, log=lambda s: None)
-    assert "A DEVELOPER REVERTED AN EARLIER FIX" in (d / "prompt1.txt").read_text()
+    assert "A DEVELOPER REVERTED AN EARLIER FIX" in (d / "prompt1.txt").read_text(encoding="utf-8")
     assert result["attempts"][0]["reverted_fix"] == fix and "pass" not in result["attempts"][0]
     assert result["verdict"] == "draft_passes" and result["tries"] == 2
-    assert patch_fingerprint((d / "patch.diff").read_text()) != undone[0]["fingerprint"]
+    assert patch_fingerprint((d / "patch.diff").read_text(encoding="utf-8")) != undone[0]["fingerprint"]
 
 
 def test_a_model_that_only_repeats_the_reverted_fix_gets_nothing_applied(reverted_repo, tmp_path):
@@ -122,6 +122,6 @@ def test_a_demoted_rule_is_recorded_and_no_longer_fixed(reverted_repo, tmp_path)
     acts = Ledger(out / "sthg").actions()
     assert list(acts[acts.kind == "demote"].rule_id) == [RULE] and len(acts[acts.kind == "revert_seen"]) == 1
     assert not set(acts.kind) & {"draft", "gate", "apply"}
-    rules = [x for f in (out / "rules-active").glob("*.yaml") if f.name != "acknowledged.yaml" for x in yaml.safe_load(f.read_text()) or []]
+    rules = [x for f in (out / "rules-active").glob("*.yaml") if f.name != "acknowledged.yaml" for x in yaml.safe_load(f.read_text(encoding="utf-8")) or []]
     assert [x["severity"] for x in rules if x["id"] == RULE] == ["low"]
     assert "from app.db import connect" in g(repo, "show", "HEAD:app/ui.py")     # the human's version stands

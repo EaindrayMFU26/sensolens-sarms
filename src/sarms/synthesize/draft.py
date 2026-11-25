@@ -242,7 +242,7 @@ def fresh_copy(repo_dir: Path, sha: str):
 def run_tests(tree: Path, cmd: str, timeout: int):
     t0 = time.time()
     try:
-        p = subprocess.run(cmd, shell=True, cwd=tree, capture_output=True, text=True, timeout=timeout)
+        p = subprocess.run(cmd, shell=True, cwd=tree, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
         out = (p.stdout + p.stderr)
         return {"command": cmd, "exit": p.returncode, "pass": p.returncode == 0, "seconds": round(time.time() - t0, 1),
                 "tail": out[-3000:]}
@@ -298,7 +298,7 @@ def draft_one(repo_dir, sha=None, rules_dir=None, rms_dir=None, edge=None, pick_
             reply, rec = "", {"model": "template"}
         else:
             text, importers = P.build(v, rule, copy, roots_paths, feedback=feedback, reverted=reverted)
-            (out / f"prompt{attempt}.txt").write_text(text)
+            (out / f"prompt{attempt}.txt").write_text(text, encoding="utf-8")
             try:
                 reply, rec = llm.complete(text, P.SYSTEM, model=model, base_url=base_url, call_no=attempt - 1)
             except llm.LLMError as e:
@@ -306,7 +306,7 @@ def draft_one(repo_dir, sha=None, rules_dir=None, rms_dir=None, edge=None, pick_
                 result["attempts"].append(att)
                 log(f"  attempt {attempt}: {e}")
                 break
-            (out / f"reply{attempt}.txt").write_text(reply)
+            (out / f"reply{attempt}.txt").write_text(reply, encoding="utf-8")
             blocks, reason, problems = parse(reply)
             att.update({"model": rec, "reason": reason})
             if problems:
@@ -324,7 +324,7 @@ def draft_one(repo_dir, sha=None, rules_dir=None, rms_dir=None, edge=None, pick_
             log(f"  attempt {attempt}: {problems[0]}")
             continue
         patch = git(copy, "diff", "--", ".", check=False) + git(copy, "ls-files", "--others", "--exclude-standard", check=False)
-        (out / f"patch{attempt}.diff").write_text(patch)
+        (out / f"patch{attempt}.diff").write_text(patch, encoding="utf-8")
         fp = patch_fingerprint(patch)
         again = [x["fix"] for x in reverted if fp and fp == x["fingerprint"]]
         if again:
@@ -373,7 +373,7 @@ def draft_one(repo_dir, sha=None, rules_dir=None, rms_dir=None, edge=None, pick_
         result["attempts"].append(att)
         if ok:
             result["verdict"] = "draft_passes"
-            (out / "patch.diff").write_text(patch)
+            (out / "patch.diff").write_text(patch, encoding="utf-8")
             log(f"  attempt {attempt}: PASS — violation gone, {len(after_set)} violations left (was {len(before_set)})"
                 + (f"; tests pass in {att['g3']['seconds']}s" if "g3" in att else ""))
             break
@@ -392,7 +392,7 @@ def draft_one(repo_dir, sha=None, rules_dir=None, rms_dir=None, edge=None, pick_
     result["tries"] = len(result["attempts"])
     prompts = sorted(out.glob("prompt*.txt"))
     result["prompt_hash"] = hashlib.sha256(prompts[0].read_bytes()).hexdigest() if prompts else None
-    (out / "result.json").write_text(json.dumps(result, indent=1, default=str))
+    (out / "result.json").write_text(json.dumps(result, indent=1, default=str), encoding="utf-8")
     log(f"verdict: {result['verdict']} after {result['tries']} attempt(s), {result['seconds']}s -> {out}")
     return result, out
 

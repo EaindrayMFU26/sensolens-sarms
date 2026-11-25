@@ -8,7 +8,7 @@ from sarms.rules import evidence as E
 
 
 def test_learner_never_reads_the_import_linter_record():
-    src = Path(E.__file__).read_text()
+    src = Path(E.__file__).read_text(encoding="utf-8")
     for forbidden in ("find_il_config", "read_il_options", "importlinter", ".importlinter", "setup.cfg", "pyproject"):
         assert not re.search(re.escape(forbidden) + r"(?![^\n]*hidden)", src.split('"""', 2)[2]), forbidden
 

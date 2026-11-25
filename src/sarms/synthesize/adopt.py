@@ -72,12 +72,12 @@ def previous_rules(out: Path):
     f = out / "soft.yaml"
     if not f.exists():
         return {}
-    return {(r["from"], r["to"]): r for r in (yaml.safe_load(f.read_text()) or [])}
+    return {(r["from"], r["to"]): r for r in (yaml.safe_load(f.read_text(encoding="utf-8")) or [])}
 
 
 def adopt(repo_dir, learn_dir, out_dir, judge=False, model=None, base_url=None, log=print, strict=False, demotions=(), certified=False):
     repo_dir, learn_dir, out = Path(repo_dir).resolve(), Path(learn_dir), Path(out_dir)
-    meta = json.loads((learn_dir / "learn.json").read_text())
+    meta = json.loads((learn_dir / "learn.json").read_text(encoding="utf-8"))
     cand = pd.read_csv(learn_dir / "candidates.csv")
     sha = git(repo_dir, "rev-parse", meta["last"]).strip()
     label = repo_dir.name
@@ -193,9 +193,9 @@ def adopt(repo_dir, learn_dir, out_dir, judge=False, model=None, base_url=None, 
         (out / "certificates.json").write_text(json.dumps({"spec": "sarms rule correctness v1 (A1-A6)", "learn_dir": str(learn_dir), "rules_dir": str(out),
                                                            "A5_consistency": {"holds": a5_ok, **witness},
                                                            "certified": sorted(f"{r['from']} -> {r['to']}" for r in rules),
-                                                           "rules": {r["id"]: certs[r["id"]] for r in rules}}, indent=1))
+                                                           "rules": {r["id"]: certs[r["id"]] for r in rules}}, indent=1), encoding="utf-8")
     errors = validate(rules)
-    (out / "soft.yaml").write_text(yaml.safe_dump(rules, sort_keys=False))
+    (out / "soft.yaml").write_text(yaml.safe_dump(rules, sort_keys=False), encoding="utf-8")
     now_pairs = {(r["from"], r["to"]) for r in rules}
     changes = {"new": sorted(f"{a} -> {b}" for a, b in now_pairs - set(before)),
                "kept": sorted(f"{a} -> {b}" for a, b in now_pairs & set(before)),
@@ -204,14 +204,14 @@ def adopt(repo_dir, learn_dir, out_dir, judge=False, model=None, base_url=None, 
     # a bundle without contracts, so the Differ knows the root packages and checks these rules itself
     (out / "contracts.json").write_text(json.dumps({"repo": label, "compiled_at": sha, "config_file": None,
                                                     "session": {"root_packages": meta["roots"], "components": meta.get("components", [])},
-                                                    "contracts_strict": [], "contracts_asis": []}, indent=1))
+                                                    "contracts_strict": [], "contracts_asis": []}, indent=1), encoding="utf-8")
     policy = {"status": "definitive" if strict else "soft",
               "worst_case_of_a_wrong_rule": "one future import line re-routed per push, in a one-commit revertible change (G7); "
                                            "nothing existing is rewritten because every adopted pair is absent from the code at adoption",
               "demotion": "a developer revert of a fix made under the rule sets its severity to low (pass --demote 'A -> B' on the next run)",
               "re-evaluation": "re-run adopt after each replay window; ids are stable per pair"}
     (out / "adoption-log.json").write_text(json.dumps({"repo": label, "at": sha, "judge": judge, "strict": strict, "policy": policy,
-                                                       "changes": changes, "decisions": log_rows}, indent=1))
+                                                       "changes": changes, "decisions": log_rows}, indent=1), encoding="utf-8")
     kind = "certified" if certified else "definitive" if strict else "soft"
     log(f"{len(rules)} {kind} rules adopted of {len(cand)} candidates "
         f"({sum(1 for d in log_rows if d.get('vetoed_by'))} vetoed by the judge; "

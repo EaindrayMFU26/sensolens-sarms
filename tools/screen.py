@@ -53,7 +53,7 @@ OK_LICENCES = ("MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "BSD")
 def gh_json(path):
     if not shutil.which("gh"):
         return None
-    p = subprocess.run(["gh", "api", path], capture_output=True, text=True)
+    p = subprocess.run(["gh", "api", path], capture_output=True, text=True, encoding="utf-8", errors="replace")
     return json.loads(p.stdout) if p.returncode == 0 else None
 
 
@@ -108,7 +108,7 @@ def contract_since(d, ref, files=IL_FILES):
 
 
 def evidence_rows(path, key="repo"):
-    return {r[key]: r for r in csv.DictReader(open(path))} if Path(path).exists() else {}
+    return {r[key]: r for r in csv.DictReader(open(path, encoding="utf-8"))} if Path(path).exists() else {}
 
 
 def screen(owner_repo, checkout=True, tests=None, base=None):
@@ -203,7 +203,7 @@ def main():
     base = evidence_rows(REPORTS / "awareness-gap-baseline" / "summary.csv")
     keep = evidence_rows(a.out)          # keep decision/reason typed by hand
     rows = []
-    for line in [ln.split("#")[0].strip() for ln in open(a.longlist)]:
+    for line in [ln.split("#")[0].strip() for ln in open(a.longlist, encoding="utf-8")]:
         if not line:
             continue
         r, *flags = line.split()          # "owner/repo !nocheckout" skips the LOC count for one huge repo
@@ -218,7 +218,7 @@ def main():
         rows.append(row)
         print(f"{r:40s} {row.get('criteria_met', row.get('reason'))}")
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
-    with open(a.out, "w", newline="") as fh:
+    with open(a.out, "w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=SHEET + EXTRA)
         w.writeheader()
         for row in rows:

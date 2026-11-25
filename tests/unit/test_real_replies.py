@@ -28,22 +28,22 @@ TASK_PY = textwrap.dedent("""\
 def make_tree(tmp_path):
     tree = tmp_path / "copy"
     (tree / "kedro" / "runner").mkdir(parents=True)
-    (tree / "kedro" / "runner" / "task.py").write_text(TASK_PY)
+    (tree / "kedro" / "runner" / "task.py").write_text(TASK_PY, encoding="utf-8")
     return tree
 
 
 def test_joined_non_adjacent_lines_are_rejected(tmp_path):
     tree = make_tree(tmp_path)
     for name in ("reply1.txt", "reply3.txt"):
-        blocks, reason, problems = parse((FIX / name).read_text())
+        blocks, reason, problems = parse((FIX / name).read_text(encoding="utf-8"))
         assert len(blocks) == 1 and not problems and reason.startswith("Strategy 3")
         assert apply(tree, blocks, {"kedro"})[0].endswith("first line was 'from kedro.framework.project import settings')")
-        assert (tree / "kedro" / "runner" / "task.py").read_text() == TASK_PY  # nothing changed
+        assert (tree / "kedro" / "runner" / "task.py").read_text(encoding="utf-8") == TASK_PY  # nothing changed
 
 
 def test_swapping_names_from_the_same_module_is_caught_statically(tmp_path):
     tree = make_tree(tmp_path)
-    blocks, reason, problems = parse((FIX / "reply2.txt").read_text())
+    blocks, reason, problems = parse((FIX / "reply2.txt").read_text(encoding="utf-8"))
     assert not problems and apply(tree, blocks, {"kedro"}) == []
     left = still_imports(tree, ["kedro/runner/task.py"], "kedro.framework.project")
     assert len(left) == 3 and left[0].startswith("kedro/runner/task.py line 4: from kedro.framework.project import LOGGING")
@@ -51,7 +51,7 @@ def test_swapping_names_from_the_same_module_is_caught_statically(tmp_path):
 
 def test_still_imports_sees_submodules_and_plain_imports(tmp_path):
     tree = tmp_path
-    (tree / "m.py").write_text("import kedro.framework.project.settings as s\nfrom kedro.framework import project\nimport os\n")
+    (tree / "m.py").write_text("import kedro.framework.project.settings as s\nfrom kedro.framework import project\nimport os\n", encoding="utf-8")
     hits = still_imports(tree, ["m.py"], "kedro.framework.project")
     assert len(hits) == 1 and "line 1" in hits[0]
 
@@ -63,11 +63,11 @@ def test_import_to_a_nonexistent_module_is_caught(tmp_path):
 
     tree = tmp_path
     (tree / "kedro" / "io").mkdir(parents=True)
-    (tree / "kedro" / "__init__.py").write_text("")
-    (tree / "kedro" / "utils.py").write_text("def load_obj():\n    return 1\n")
-    (tree / "kedro" / "io" / "__init__.py").write_text("")
+    (tree / "kedro" / "__init__.py").write_text("", encoding="utf-8")
+    (tree / "kedro" / "utils.py").write_text("def load_obj():\n    return 1\n", encoding="utf-8")
+    (tree / "kedro" / "io" / "__init__.py").write_text("", encoding="utf-8")
     (tree / "kedro" / "io" / "memory_dataset.py").write_text(
-        "from kedro.io.utils import compose_classes  # planted\nfrom kedro.utils import sarms_fi_3_helper\nfrom kedro.utils import load_obj\n")
+        "from kedro.io.utils import compose_classes  # planted\nfrom kedro.utils import sarms_fi_3_helper\nfrom kedro.utils import load_obj\n", encoding="utf-8")
     bad = unresolved_imports(tree, ["kedro/io/memory_dataset.py"], [str(tree)], "kedro")
     assert bad == ["kedro/io/memory_dataset.py line 1: module kedro.io.utils does not exist in this repository",
                    "kedro/io/memory_dataset.py line 2: kedro.utils does not define sarms_fi_3_helper"]

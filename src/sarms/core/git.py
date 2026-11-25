@@ -14,7 +14,7 @@ from sarms.core.paths import RAW, is_git_url, repo_name
 
 
 def run(args, cwd=None, check=True) -> str:
-    p = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
+    p = subprocess.run(args, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if check and p.returncode != 0:
         raise RuntimeError(f"{' '.join(map(str, args))}\n{p.stderr.strip()}")
     return p.stdout
@@ -31,7 +31,7 @@ def ensure_clone(owner_repo: str, checkout: bool = True) -> Path:
     if d.exists():
         # a failed clone can leave a folder with a broken .git; git would then silently walk UP to the
         # parent repository (sarms itself), so make sure d is the top of its own repository first
-        top = subprocess.run(["git", "-C", str(d), "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
+        top = subprocess.run(["git", "-C", str(d), "rev-parse", "--show-toplevel"], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip()
         if top and Path(top).resolve() == d.resolve():
             git(d, "fetch", "-q", "origin")
             return d

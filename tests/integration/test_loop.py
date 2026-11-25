@@ -33,7 +33,7 @@ layers =
 
 def g(repo, *a):
     return subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *a],
-                          check=True, capture_output=True, text=True).stdout
+                          check=True, capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
 
 
 @pytest.fixture
@@ -41,12 +41,12 @@ def repo(tmp_path):
     r = tmp_path / "subject"
     (r / "app").mkdir(parents=True)
     (r / "tests").mkdir()
-    (r / ".importlinter").write_text(CONFIG)
-    (r / "app" / "__init__.py").write_text("")
-    (r / "app" / "db.py").write_text("def connect():\n    return 'db'\n")
-    (r / "app" / "service.py").write_text("from app.db import connect\n\n\ndef run():\n    return connect()\n")
-    (r / "app" / "ui.py").write_text("import os\nfrom app.db import connect\n\n\ndef show():\n    return os.getcwd()\n")
-    (r / "tests" / "test_app.py").write_text("from app.service import run\n\n\ndef test_run():\n    assert run() == 'db'\n")
+    (r / ".importlinter").write_text(CONFIG, encoding="utf-8")
+    (r / "app" / "__init__.py").write_text("", encoding="utf-8")
+    (r / "app" / "db.py").write_text("def connect():\n    return 'db'\n", encoding="utf-8")
+    (r / "app" / "service.py").write_text("from app.db import connect\n\n\ndef run():\n    return connect()\n", encoding="utf-8")
+    (r / "app" / "ui.py").write_text("import os\nfrom app.db import connect\n\n\ndef show():\n    return os.getcwd()\n", encoding="utf-8")
+    (r / "tests" / "test_app.py").write_text("from app.service import run\n\n\ndef test_run():\n    assert run() == 'db'\n", encoding="utf-8")
     g(r, "init", "-q", "-b", "main")
     g(r, "add", "-A")
     g(r, "commit", "-q", "-m", "first: ui imports db (unused)")
@@ -96,7 +96,7 @@ def test_compile_differ_ledger_and_draft(repo, tmp_path):
         assert True
         >>>>>>> REPLACE
         REASON: weaken the test
-        """))
+        """), encoding="utf-8")
     (replies / "2.txt").write_text(textwrap.dedent("""\
         FILE: app/ui.py
         <<<<<<< FIND
@@ -104,7 +104,7 @@ def test_compile_differ_ledger_and_draft(repo, tmp_path):
         =======
         >>>>>>> REPLACE
         REASON: strategy 1, connect is unused
-        """))
+        """), encoding="utf-8")
     result, d = draft_one(repo, rules_dir=rules_dir, rms_dir=tmp_path / "rms", base_url=f"fake:{replies}",
                           tests="python -m pytest -q -p no:cacheprovider tests", log=lambda s: None)
     assert result["verdict"] == "draft_passes" and result["tries"] == 2
@@ -112,17 +112,17 @@ def test_compile_differ_ledger_and_draft(repo, tmp_path):
     assert result["attempts"][1]["g1"] == {"violation_gone": True, "new_violations": [], "violations_before": 1,
                                            "violations_after": 0, "pass": True}
     assert result["attempts"][1]["g3"]["pass"]
-    assert "from app.db import connect" not in (d / "patch.diff").read_text().split("\n-")[0]
-    assert json.loads((d / "result.json").read_text())["prompt_hash"]
+    assert "from app.db import connect" not in (d / "patch.diff").read_text(encoding="utf-8").split("\n-")[0]
+    assert json.loads((d / "result.json").read_text(encoding="utf-8"))["prompt_hash"]
     # the subject itself was never touched
-    assert "from app.db import connect" in (repo / "app" / "ui.py").read_text()
+    assert "from app.db import connect" in (repo / "app" / "ui.py").read_text(encoding="utf-8")
 
     # the template drafter reaches the same fix without a model
     t, _ = draft_one(repo, rules_dir=rules_dir, rms_dir=tmp_path / "rms", template=True, log=lambda s: None)
     assert t["verdict"] == "draft_passes" and t["class"] == "template"
 
     # history: a second commit repairs it; the Differ replay + ledger see one repaired episode of 1 commit
-    (repo / "app" / "ui.py").write_text("import os\n\n\ndef show():\n    return os.getcwd()\n")
+    (repo / "app" / "ui.py").write_text("import os\n\n\ndef show():\n    return os.getcwd()\n", encoding="utf-8")
     g(repo, "commit", "-qam", "repair")
     replay(repo, "main", tmp_path / "rms", rules_dir, log=lambda s: None)
     led = build(tmp_path / "rms", "t/app")
@@ -142,24 +142,24 @@ def test_fault_injection_and_eval_on_the_tiny_repo(repo, tmp_path):
     rules_dir = tmp_path / "rms" / "rules"
     compile_repo(repo, out_dir=rules_dir, repo_label="app")
     # the first commit already breaks ui -> db; repair it so every plant is a new violation
-    (repo / "app" / "ui.py").write_text("import os\n\n\ndef show():\n    return os.getcwd()\n")
+    (repo / "app" / "ui.py").write_text("import os\n\n\ndef show():\n    return os.getcwd()\n", encoding="utf-8")
     g(repo, "commit", "-qam", "repair")
     env = {**__import__("os").environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2] / "src")}
     root = Path(__file__).resolve().parents[2]
     p = subprocess.run([sys.executable, str(root / "tools" / "fault_injection.py"), str(repo), "--rules", str(rules_dir),
                         "--out", str(tmp_path / "rms" / "fi"), "--kinds", "unused,helper,control", "--run-id", "t"],
-                       capture_output=True, text=True, env=env)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     assert p.returncode == 0, p.stderr
-    plants = json.loads((tmp_path / "rms" / "fi" / "plants.json").read_text())["plants"]
+    plants = json.loads((tmp_path / "rms" / "fi" / "plants.json").read_text(encoding="utf-8"))["plants"]
     assert [x["kind"] for x in plants] == ["unused", "helper", "control"]
     assert len({x["parent"] for x in plants}) == 1                      # siblings, all from the same head
     assert g(repo, "log", "-1", "--format=%an", plants[0]["sha"]).strip() == "SARMS Test Author"
     p = subprocess.run([sys.executable, str(root / "tools" / "eval_drafts.py"), str(tmp_path / "rms" / "fi" / "plants.json"),
                         "--models", "template", "oracle", "--run-id", "t",
                         "--tests", f"{sys.executable} -m pytest tests -q -p no:cacheprovider"],
-                       capture_output=True, text=True, env=env)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     assert p.returncode == 0, p.stderr
-    md = (tmp_path / "rms" / "fi" / "results-t.md").read_text()
+    md = (tmp_path / "rms" / "fi" / "results-t.md").read_text(encoding="utf-8")
     assert "**Detection: 3/3**" in md
     assert "**template: 1/2 drafts pass**" in md and "**oracle: 2/2 drafts pass**" in md
     assert "| silent | silent |" in md

@@ -35,7 +35,7 @@ def scan(repo):
 
 
 def main():
-    repos = [x.split("#")[0].strip() for x in open(sys.argv[1]) if x.split("#")[0].strip()]
+    repos = [x.split("#")[0].strip() for x in open(sys.argv[1], encoding="utf-8") if x.split("#")[0].strip()]
     with cf.ThreadPoolExecutor(32) as ex:
         for repo, hits in ex.map(scan, repos):
             if hits:

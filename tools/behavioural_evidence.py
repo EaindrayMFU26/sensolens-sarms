@@ -45,13 +45,13 @@ def module_of(path: str, roots):
 
 
 def behaviour(repo_dir: Path, learn_dir: Path):
-    meta = json.loads((learn_dir / "learn.json").read_text())
+    meta = json.loads((learn_dir / "learn.json").read_text(encoding="utf-8"))
     roots = set(meta["roots"])
     hc = pd.read_parquet(learn_dir / "history_components.parquet")
     comps = sorted(hc[hc.idx == hc.idx.max()].comp.tolist(), key=len, reverse=True)
     args = ["git", "-C", str(repo_dir), "log", "--first-parent", f"--since={meta['first_ts']}", f"--until={meta['last_ts']}",
             "--format=@%H%x09%an", "--name-only"]
-    out = subprocess.run(args, capture_output=True, text=True, check=True).stdout
+    out = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True).stdout
     commits, cur = [], None
     for line in out.splitlines():
         if line.startswith("@"):
@@ -80,8 +80,8 @@ def features(repo: str):
     learn = Path("data") / repo / "rms" / "learn"
     raw = Path("data/raw") / repo
     g = pd.read_csv(learn / "candidates_graded.csv")
-    meta = json.loads((learn / "learn.json").read_text())
-    top = subprocess.run(["git", "-C", str(raw), "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
+    meta = json.loads((learn / "learn.json").read_text(encoding="utf-8"))
+    top = subprocess.run(["git", "-C", str(raw), "rev-parse", "--show-toplevel"], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip()
     has = subprocess.run(["git", "-C", str(raw), "cat-file", "-e", f"{meta['last']}^{{commit}}"], capture_output=True).returncode == 0
     if Path(top).resolve() != raw.resolve() or not has:
         raise RuntimeError("no clone with the learner's history (git would walk up to the parent repository)")
@@ -196,7 +196,7 @@ def main():
         tag = " (held out)" if repo in a.holdout else ""
         L.append(f"| {repo}{tag} | {len(grp)} | {pct(grp.written.mean())} | {len(s_)} | {pct(s_.written.mean()) if len(s_) else '–'} | "
                  f"{len(sg)} | {pct(sg.written.mean()) if len(sg) else '–'} | {len(ss)} | {pct(ss.written.mean()) if len(ss) else '–'} |")
-    Path("reports/behavioural-evidence.md").write_text("\n".join(L) + "\n")
+    Path("reports/behavioural-evidence.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n".join(L))
 
 

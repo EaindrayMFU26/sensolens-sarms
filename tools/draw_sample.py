@@ -70,7 +70,7 @@ def main():
     k = min(a.n_rootcause, len(post))
     rc = post.iloc[np.sort(rng.choice(len(post), size=k, replace=False))]
     rc[cols].to_csv(out / "rootcause_50.csv", index=False)
-    with open("docs/spec/pilot-sheet.csv", "w", newline="") as fh:
+    with open("docs/spec/pilot-sheet.csv", "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(cols + RATER_COLS)
         for row in rc[cols].itertuples(index=False):

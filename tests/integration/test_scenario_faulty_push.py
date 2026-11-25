@@ -80,7 +80,7 @@ def test_developer_injects_faulty_code_and_the_loop_reacts(repo, tmp_path):
         from app.gateway import connect
         >>>>>>> REPLACE
         REASON: use a gateway
-        """))
+        """), encoding="utf-8")
     (replies / "2.txt").write_text(textwrap.dedent("""\
         FILE: app/ui.py
         <<<<<<< FIND
@@ -89,7 +89,7 @@ def test_developer_injects_faulty_code_and_the_loop_reacts(repo, tmp_path):
         from app.service import run as connect
         >>>>>>> REPLACE
         REASON: strategy 2, reach the database through the service layer
-        """))
+        """), encoding="utf-8")
     result, d = draft_one(repo, rules_dir=rules_dir, rms_dir=rms, base_url=f"fake:{replies}",
                           tests="python -m pytest -q -p no:cacheprovider tests", log=lambda s: None)
     first = result["attempts"][0]
@@ -97,7 +97,7 @@ def test_developer_injects_faulty_code_and_the_loop_reacts(repo, tmp_path):
     mon.emit("DRAFT_REFUSED", attempt=1, why=first.get("problems", [""])[0][:80])
     assert result["verdict"] == "draft_passes" and result["tries"] == 2
     mon.emit("DRAFT_PASSES_GATE", attempt=2, g1=result["attempts"][1]["g1"]["pass"], g3=result["attempts"][1]["g3"]["pass"])
-    assert "from app.db import connect" in (repo / "app" / "ui.py").read_text()   # the developer's checkout is untouched
+    assert "from app.db import connect" in (repo / "app" / "ui.py").read_text(encoding="utf-8")   # the developer's checkout is untouched
     assert (d / "patch.diff").exists() and (d / "result.json").exists()
     mon.emit("KERNEL_WOULD_COMMIT", patch=str(d / "patch.diff"), revertible_in_one_commit=True)
 
@@ -145,14 +145,14 @@ def test_developer_injects_faulty_code_and_the_loop_reacts(repo, tmp_path):
 
     # ---- the change stream: after a burst of edits to ui.py it becomes the hotspot
     for i in range(6):
-        push(repo, f"ui tweak {i}", {"app/ui.py": (repo / "app" / "ui.py").read_text() + f"\n\ndef extra_{i}():\n    return {i}\n" * 3})
+        push(repo, f"ui tweak {i}", {"app/ui.py": (repo / "app" / "ui.py").read_text(encoding="utf-8") + f"\n\ndef extra_{i}():\n    return {i}\n" * 3})
     df = to_frame(stream(repo), repo_dir=repo)
     hot = CC.hotspots(df)
     assert hot.index[0] == "app/ui.py" and bool(hot.loc["app/ui.py", "critical"])
     mon.emit("HOTSPOT", file="app/ui.py", commits=int(hot.loc["app/ui.py", "commits"]), churn=int(hot.loc["app/ui.py", "churn"]), quadrant=hot.loc["app/ui.py", "quadrant"])
 
     # ---- the event log is the audit trail
-    (rms / "scenario-events.json").write_text(json.dumps(mon.events, indent=1, default=str))
+    (rms / "scenario-events.json").write_text(json.dumps(mon.events, indent=1, default=str), encoding="utf-8")
     assert mon.stages() == ["RULES_COMPILED", "CHECK", "VIOLATION_DETECTED", "DRAFT_REFUSED", "DRAFT_PASSES_GATE", "KERNEL_WOULD_COMMIT",
                             "CHECK", "LEDGER_EPISODE_CLOSED", "BELIEF", "BELIEF", "RULE_RETIRED", "HOTSPOT"]
     # nobody was asked anything, and the developer's own checkout was never modified by the system

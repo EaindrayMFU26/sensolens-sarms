@@ -166,7 +166,7 @@ def load_rules(rules_dir: Path):
     for f in sorted(Path(rules_dir).glob("*.yaml")):
         if f.name == "acknowledged.yaml":
             continue
-        for r in yaml.safe_load(f.read_text()) or []:
+        for r in yaml.safe_load(f.read_text(encoding="utf-8")) or []:
             if isinstance(r, dict) and r.get("kind") == "forbidden":
                 rules.append(r)
     return rules
@@ -188,7 +188,7 @@ def certify(learn_dir, rules_dir, out=None, log=print):
            "A5_consistency": {"holds": a5_ok, **witness}, "certified": sorted(f"{a} -> {b}" for a, b in ok_pairs) if a5_ok else [],
            "rules": certs}
     out = Path(out) if out else rules_dir / "certificates.json"
-    out.write_text(json.dumps(doc, indent=1))
+    out.write_text(json.dumps(doc, indent=1), encoding="utf-8")
     n_ok = len(ok_pairs) if a5_ok else 0
     log(f"{n_ok} of {len(rules)} rules certified under A1-A6 (A5 set consistency: {a5_ok}) -> {out}")
     return doc
@@ -200,7 +200,7 @@ def verify(learn_dir, rules_dir, log=print):
     cert_path = rules_dir / "certificates.json"
     if not cert_path.exists():
         raise SystemExit(f"no certificates.json in {rules_dir}; run `sarms certify` first")
-    doc = json.loads(cert_path.read_text())
+    doc = json.loads(cert_path.read_text(encoding="utf-8"))
     history = load_history(learn_dir)
     failures, ok_pairs = [], []
     ledger_excused = None

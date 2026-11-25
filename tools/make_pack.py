@@ -18,13 +18,13 @@ FROZEN = ["docs/repo-selection.md", "docs/spec/vocabulary.md", "docs/spec/rules.
 
 
 def sh(cmd):
-    p = subprocess.run(cmd, text=True, capture_output=True)
+    p = subprocess.run(cmd, text=True, encoding="utf-8", errors="replace", capture_output=True)
     return (p.stdout + p.stderr).strip().splitlines()[-1] if (p.stdout + p.stderr).strip() else f"exit {p.returncode}"
 
 
 def main():
     pack = Path("reports/p1-pack.md")
-    t = pack.read_text()
+    t = pack.read_text(encoding="utf-8")
     rows = ["| File | SHA-256 |", "| --- | --- |"]
     for f in FROZEN:
         if Path(f).exists():
@@ -37,7 +37,7 @@ def main():
     import re
     t = re.sub(r"<!-- HASHES -->.*?(?=\n## )", "<!-- HASHES -->\n" + "\n".join(rows) + "\n", t, flags=re.S)
     t = re.sub(r"<!-- CHECKS -->.*$", "<!-- CHECKS -->\n" + "\n".join(checks) + "\n", t, flags=re.S)
-    pack.write_text(t)
+    pack.write_text(t, encoding="utf-8")
     print(f"-> {pack}")
 
 

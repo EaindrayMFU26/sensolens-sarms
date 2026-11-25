@@ -58,14 +58,14 @@ def test_strict_gates_single_out_the_definitive_rule(tmp_path):
 def test_template_deletes_a_plain_dotted_import_whose_path_is_unused(tmp_path):
     pkg = tmp_path / "app" / "pipeline"
     pkg.mkdir(parents=True)
-    (tmp_path / "app" / "__init__.py").write_text("")
-    (pkg / "__init__.py").write_text("")
+    (tmp_path / "app" / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
     # `import app.runner.thread` binds `app`, which the file uses elsewhere; the dotted path itself is unused
-    (pkg / "node.py").write_text("import app.runner.thread\nfrom app.config import load\n\n\ndef run():\n    return load()\n")
+    (pkg / "node.py").write_text("import app.runner.thread\nfrom app.config import load\n\n\ndef run():\n    return load()\n", encoding="utf-8")
     violation = {"lines": [{"edge": "app.pipeline.node->app.runner.thread", "line_number": 1, "line_contents": "import app.runner.thread"}]}
     blocks, reason = template_draft(tmp_path, violation, [str(tmp_path)])
     assert blocks == [("app/pipeline/node.py", "import app.runner.thread", "")], reason
     # when the dotted path is used, the template refuses rather than breaking the file
-    (pkg / "node.py").write_text("import app.runner.thread\n\n\ndef run():\n    return app.runner.thread.go()\n")
+    (pkg / "node.py").write_text("import app.runner.thread\n\n\ndef run():\n    return app.runner.thread.go()\n", encoding="utf-8")
     blocks, reason = template_draft(tmp_path, violation, [str(tmp_path)])
     assert blocks is None and "still used" in reason

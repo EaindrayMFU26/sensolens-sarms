@@ -71,7 +71,7 @@ def main():
         w.writeheader()
         w.writerows(out)
     (od / "longlist.txt").write_text("# kept by tools/reduce_longlist.py (rules R1-R5 in docs/repo-selection.md)\n"
-                                     + "\n".join(kept) + "\n")
+                                     + "\n".join(kept) + "\n", encoding="utf-8")
     by = {}
     for o in out:
         by[o["rule"] or "kept"] = by.get(o["rule"] or "kept", 0) + 1

@@ -54,7 +54,7 @@ def read_il_options(fname: str, text: str):
     configuration.configure()
     from importlinter.application import use_cases as uc
     suffix = ".toml" if fname.endswith(".toml") else ".ini"
-    with tempfile.NamedTemporaryFile("w", suffix=suffix, delete=False) as fh:
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=suffix, delete=False) as fh:
         fh.write(text)
         tmp = fh.name
     try:

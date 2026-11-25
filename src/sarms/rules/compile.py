@@ -151,7 +151,7 @@ def compile_all(opts, repo: str, sha: str, config_file: str):
 
 def validate(rules, schema_path=SCHEMA):
     """[(rule id, error message)] — empty when every rule validates."""
-    schema = yaml.safe_load(Path(schema_path).read_text())
+    schema = yaml.safe_load(Path(schema_path).read_text(encoding="utf-8"))
     v = jsonschema.Draft202012Validator(schema)
     return [(r.get("id"), e.message) for r in rules for e in v.iter_errors(r)]
 
@@ -162,9 +162,9 @@ def write(out_dir, files, ack, bundle):
     for old in out.glob("*.yaml"):
         old.unlink()
     for fname, rules in files.items():
-        (out / fname).write_text(yaml.safe_dump(rules, sort_keys=False, allow_unicode=True))
-    (out / "acknowledged.yaml").write_text(yaml.safe_dump(ack, sort_keys=False, allow_unicode=True))
-    (out / "contracts.json").write_text(json.dumps(bundle, indent=1, default=str))
+        (out / fname).write_text(yaml.safe_dump(rules, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    (out / "acknowledged.yaml").write_text(yaml.safe_dump(ack, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    (out / "contracts.json").write_text(json.dumps(bundle, indent=1, default=str), encoding="utf-8")
     return out
 
 
@@ -174,12 +174,12 @@ def load_rules(rules_dir):
     for f in sorted(Path(rules_dir).glob("*.yaml")):
         if f.name == "acknowledged.yaml":
             continue
-        rules.extend(yaml.safe_load(f.read_text()) or [])
+        rules.extend(yaml.safe_load(f.read_text(encoding="utf-8")) or [])
     return rules
 
 
 def load_bundle(rules_dir):
-    return json.loads((Path(rules_dir) / "contracts.json").read_text())
+    return json.loads((Path(rules_dir) / "contracts.json").read_text(encoding="utf-8"))
 
 
 def compile_repo(repo_dir, sha=None, config=None, out_dir=None, repo_label=None):

@@ -57,7 +57,7 @@ def module_of(path: str, roots):
 
 def commits_with_components(repo_dir: Path, comps, roots, months: int):
     out = subprocess.run(["git", "-C", str(repo_dir), "log", "--first-parent", f"--since={months} months ago",
-                          "--format=@%H%x09%at%x09%an", "--name-only"], capture_output=True, text=True, check=True).stdout
+                          "--format=@%H%x09%at%x09%an", "--name-only"], capture_output=True, text=True, encoding="utf-8", errors="replace", check=True).stdout
     commits = []
     cur = None
     for line in out.splitlines():
@@ -91,7 +91,7 @@ def forbidden_pairs(rule_dirs):
     pairs = {}
     for d in rule_dirs:
         for f in Path(d).glob("*.yaml"):
-            for r in yaml.safe_load(f.read_text()) or []:
+            for r in yaml.safe_load(f.read_text(encoding="utf-8")) or []:
                 if isinstance(r, dict) and r.get("kind") == "forbidden" and "*" not in r["from"] + r["to"]:
                     pairs[(r["from"], r["to"])] = r["id"]
     return pairs
@@ -122,7 +122,7 @@ def main():
     a = ap.parse_args()
     repo, out = Path(a.repo_dir).resolve(), Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    meta = json.loads((Path(a.learn) / "learn.json").read_text())
+    meta = json.loads((Path(a.learn) / "learn.json").read_text(encoding="utf-8"))
     roots = set(meta["roots"])
     comps, edges = load_components(Path(a.learn))
     commits = commits_with_components(repo, comps, roots, a.months)
@@ -204,7 +204,7 @@ def main():
             "cells": [{"a": r["a"], "b": r["b"], "degree": r["degree"], "class": r["class"], "trend": r["trend"], "co": int(r["co_commits"]),
                        "rule_id": r["rule_id"], "direction": r["forbidden_direction"]} for r in coupling.to_dict("records")],
             "component_rows": comp.to_dict("records")}
-    (out / "heatmap.json").write_text(json.dumps(heat, indent=1, default=str))
+    (out / "heatmap.json").write_text(json.dumps(heat, indent=1, default=str), encoding="utf-8")
 
     print(f"{repo.name}: {len(commits)} commits in the last {a.months} months touched {len(rev)} components ({bulk} bulk commits excluded from coupling); "
           f"{len(coupling)} coupled pairs ({coupling['class'].value_counts().to_dict() if len(coupling) else {}})")

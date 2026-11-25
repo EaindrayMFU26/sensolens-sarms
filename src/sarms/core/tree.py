@@ -66,7 +66,7 @@ def run_worker(tree, bundle, cache_dir=None, src=None, timeout=900, want_edges=T
             "cache_dir": str(cache_dir) if cache_dir else None, "want_edges": want_edges, "want_details": want_details}
     try:
         p = subprocess.run([sys.executable, str(WORKER)], input=json.dumps(spec), capture_output=True,
-                           text=True, timeout=timeout, cwd=tree)
+                           text=True, encoding="utf-8", errors="replace", timeout=timeout, cwd=tree)
         out = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {"graph_error": p.stderr[-400:]}
     except subprocess.TimeoutExpired:
         out = {"graph_error": "timeout"}

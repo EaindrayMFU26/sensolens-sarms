@@ -59,7 +59,7 @@ def mine(repo, out=None, every=25, since=None, until=None, log=print):
     n_g = led.ingest_graph(he, hc)
     meta = {"repo": str(repo), "roots": roots, "components": comps, "every": every, "sampled": len(sample), "unreadable": len(errors),
             "last": sample[-1][1] if sample else None, "seconds": round(time.time() - t0, 1)}
-    (sthg / "meta.json").write_text(json.dumps(meta, indent=1))
+    (sthg / "meta.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     led.record_action(meta["last"] or "", "mine", None, {"hyperedges": n_h, "snapshots": n_g})
     led.export_parquet()
     summary = led.summary()
@@ -84,7 +84,7 @@ def certify_ledger(repo, out=None, log=print):
     if not (sthg / "meta.json").exists():
         raise SystemExit(f"no ledger at {sthg}; run `sarms mine` first")
     led = Ledger(sthg)
-    meta = json.loads((sthg / "meta.json").read_text())
+    meta = json.loads((sthg / "meta.json").read_text(encoding="utf-8"))
     history = led.history()
     written_allowed, written_forbidden = [], []
     try:
@@ -94,19 +94,19 @@ def certify_ledger(repo, out=None, log=print):
     except SystemExit:
         log("[certify] no written rules in this repository; the certified rules stand alone")
     prev_file = out / "rules-certified" / "soft.yaml"
-    previous = {(r["from"], r["to"]): r for r in (yaml.safe_load(prev_file.read_text()) or [])} if prev_file.exists() else {}
+    previous = {(r["from"], r["to"]): r for r in (yaml.safe_load(prev_file.read_text(encoding="utf-8")) or [])} if prev_file.exists() else {}
     rules, certs, changes = C.adopt_from_history(history, repo.name, written_allowed, written_forbidden, previous, compiled_at=meta["last"] or "0" * 12,
                                                  excused=led.excused())
     rc = out / "rules-certified"
     rc.mkdir(parents=True, exist_ok=True)
-    (rc / "soft.yaml").write_text(yaml.safe_dump(rules, sort_keys=False))
+    (rc / "soft.yaml").write_text(yaml.safe_dump(rules, sort_keys=False), encoding="utf-8")
     doc = {"spec": "sarms rule correctness v1 (A1-A6)", "ledger": str(sthg), "certified": sorted(f"{r['from']} -> {r['to']}" for r in rules),
            "A5_consistency": changes["A5"], "rules": certs}
-    (rc / "certificates.json").write_text(json.dumps(doc, indent=1, default=str))
+    (rc / "certificates.json").write_text(json.dumps(doc, indent=1, default=str), encoding="utf-8")
     (rc / "contracts.json").write_text(json.dumps({"repo": repo.name, "compiled_at": meta["last"], "config_file": None,
                                                    "session": {"root_packages": meta["roots"], "components": meta["components"]},
-                                                   "contracts_strict": [], "contracts_asis": []}, indent=1))
-    (rc / "adoption-log.json").write_text(json.dumps({"changes": {k: v for k, v in changes.items() if k != "near_misses"}, "near_misses": changes["near_misses"]}, indent=1, default=str))
+                                                   "contracts_strict": [], "contracts_asis": []}, indent=1), encoding="utf-8")
+    (rc / "adoption-log.json").write_text(json.dumps({"changes": {k: v for k, v in changes.items() if k != "near_misses"}, "near_misses": changes["near_misses"]}, indent=1, default=str), encoding="utf-8")
     checker_hash = hashlib.sha256(Path(C.__file__).read_bytes()).hexdigest()[:16]
     led.record_certificates(doc, meta["last"] or "", checker_hash)
     for kind in ("new", "kept", "retired"):
@@ -131,9 +131,9 @@ def certify_ledger(repo, out=None, log=print):
     if (src_rules / "contracts.json").exists():
         for f in src_rules.glob("*"):
             shutil.copy(f, merged / f.name)
-        bundle = json.loads((merged / "contracts.json").read_text())
+        bundle = json.loads((merged / "contracts.json").read_text(encoding="utf-8"))
         bundle["session"]["components"] = meta["components"]          # the Differ re-checks A1 on certified rules with these
-        (merged / "contracts.json").write_text(json.dumps(bundle, indent=1))
+        (merged / "contracts.json").write_text(json.dumps(bundle, indent=1), encoding="utf-8")
     else:
         shutil.copy(rc / "contracts.json", merged / "contracts.json")
     shutil.copy(rc / "soft.yaml", merged / "certified.yaml")
@@ -169,12 +169,12 @@ def run(repo, out=None, model=None, base_url=None, tests=None, onto=None, dry_ru
 
     demoted_ids = {x["rule_id"] for x in fixed}
     for f in sorted(rules_dir.glob("*.yaml")):
-        doc = yaml.safe_load(f.read_text()) or []
+        doc = yaml.safe_load(f.read_text(encoding="utf-8")) or []
         if f.name != "acknowledged.yaml" and any(isinstance(x, dict) and x.get("id") in demoted_ids and x.get("severity") != "low" for x in doc):
             for x in doc:
                 if isinstance(x, dict) and x.get("id") in demoted_ids:
                     x["severity"] = "low"
-            f.write_text(yaml.safe_dump(doc, sort_keys=False))
+            f.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
     res = diff_commit(repo, head, rules_dir, out, write_files=True)
     led.record_labels([{**r, "sha": head, "ts": res["ts"]} for r in res["rows"] if r["label"] != "CONFIRMED"])
     viol = [r for r in res["rows"] if r["label"] in ("ADDITIONAL", "INVERTED", "MISSING")]
@@ -220,7 +220,7 @@ def run(repo, out=None, model=None, base_url=None, tests=None, onto=None, dry_ru
                                                           "certified": len(rules), "changes": {k: len(v) for k, v in changes.items() if k in ("new", "kept", "retired")},
                                                           "verified": verified},
               "violations": len(viol), "enforceable": len(enforce), "demoted": sorted(demoted_ids), "outcomes": outcomes, "ledger": led.summary()}
-    (out / "run.json").write_text(json.dumps(report, indent=1, default=str))
+    (out / "run.json").write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
     led.export_parquet()
     _terminal_table("RUN COMPLETE", [
         ("Applied fixes", len([o for o in outcomes if o["outcome"] == "applied"])),
@@ -238,7 +238,7 @@ def status(out, log=print):
     s = led.summary()
     acts = led.actions()
     rc = out / "rules-certified" / "soft.yaml"
-    n_rules = len(yaml.safe_load(rc.read_text()) or []) if rc.exists() else 0
+    n_rules = len(yaml.safe_load(rc.read_text(encoding="utf-8")) or []) if rc.exists() else 0
     lines = [f"ledger: {s['hyperedges']} commits as hyperedges ({s['bulk']} bulk), {s['files']} files, {s['components']} components, "
              f"{s['graph_snapshots']} import-graph snapshots, {s['graph_edges_now']} component edges now",
              f"rules: {n_rules} certified (verified rules), {s['certificates']} certificates on file",

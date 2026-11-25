@@ -48,7 +48,7 @@ def test_mine_certify_run_status(repo, tmp_path):
         from app.service import run as connect
         >>>>>>> REPLACE
         REASON: through the service layer
-        """))
+        """), encoding="utf-8")
     report = product.run(repo, out, base_url=f"fake:{replies}", tests="python -m pytest -q -p no:cacheprovider", log=lambda s: None)
     assert report["violations"] == 1 and report["enforceable"] == 1
     assert report["outcomes"][0]["outcome"] == "applied"
@@ -59,7 +59,7 @@ def test_mine_certify_run_status(repo, tmp_path):
     assert ["draft", "gate", "apply"] == [k for k in acts.kind if k in ("draft", "gate", "apply")]
     lines = product.status(out, log=lambda s: None)
     assert any("certified" in ln for ln in lines) and any("apply" in ln for ln in lines)
-    assert json.loads((out / "run.json").read_text())["ledger"]["actions"] >= 4
+    assert json.loads((out / "run.json").read_text(encoding="utf-8"))["ledger"]["actions"] >= 4
 
 
 def test_git_url_resolves_to_named_checkout(tmp_path):

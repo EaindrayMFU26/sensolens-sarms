@@ -33,12 +33,12 @@ COLS = ["repo", "status", "contracts", "contract_types", "commits", "stars", "sa
 def read_done(out):
     if not Path(out).exists():
         return {}
-    return {r["repo"]: r for r in csv.DictReader(open(out))}
+    return {r["repo"]: r for r in csv.DictReader(open(out, encoding="utf-8"))}
 
 
 def append(out, row):
     new = not Path(out).exists()
-    with open(out, "a", newline="") as fh:
+    with open(out, "a", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=COLS)
         if new:
             w.writeheader()
@@ -91,20 +91,20 @@ def main():
             cmd = [sys.executable, "tools/eval_learned_rules.py", repo, "--every", str(every)]
             if fname and "/" in fname:
                 cmd += ["--config", fname]
-            p = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+            p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3600)
             ev = Path("data") / name / "rms" / "learn" / "eval.json"
             if p.returncode != 0 or not ev.exists():
                 tail = (p.stderr or p.stdout).strip().splitlines()[-1:]
                 append(a.out, {**row, "status": "eval_failed", "seconds": round(time.time() - t0), "note": (tail[0] if tail else "")[:200]})
                 print(f"  eval failed: {tail}", flush=True)
                 continue
-            res = json.loads(ev.read_text())
+            res = json.loads(ev.read_text(encoding="utf-8"))
             s, al = res["adopted"], res["all"]
             append(a.out, {**row, "status": "ok", "sampled": res["sampled_commits"], "components": res["components"],
                            "hard_pairs": s.get("hard"), "hard_visible": s.get("hard_known"), "adopted": s["learned"],
                            "adopted_correct": s["correct"], "precision": s["precision"], "recall": s["recall"],
                            "all_candidates": al["learned"], "all_precision": al["precision"], "all_recall": al["recall"],
-                           "unreadable": json.loads((ev.parent / "learn.json").read_text()).get("unreadable_commits", ""),
+                           "unreadable": json.loads((ev.parent / "learn.json").read_text(encoding="utf-8")).get("unreadable_commits", ""),
                            "seconds": round(time.time() - t0)})
             print(f"  ok: adopted {s['learned']} precision {s['precision']} recall {s['recall']} ({round(time.time() - t0)}s)", flush=True)
         except subprocess.TimeoutExpired:

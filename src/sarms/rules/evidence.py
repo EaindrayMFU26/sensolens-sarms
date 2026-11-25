@@ -261,7 +261,7 @@ def learn(repo_dir, out_dir, every=25, until=None, since=None, src=None, subdir=
             "first": sample[0][1], "last": sample[-1][1], "first_ts": sample[0][2], "last_ts": sample[-1][2],
             "pairs": int(len(ev)), "candidates": int(len(cand)), "unreadable_commits": len(errors),
             "last_read": comps and (hc.sha.iloc[-1] if len(hc) else None)}
-    (out / "learn.json").write_text(json.dumps(meta, indent=1))
+    (out / "learn.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     log(f"{len(comps)} components, {len(ev)} pairs with evidence, {len(cand)} candidate rules -> {out}")
     return meta, ev, cand
 

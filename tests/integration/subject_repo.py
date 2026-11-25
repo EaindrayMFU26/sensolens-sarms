@@ -39,14 +39,14 @@ TEST_FILE = {"tests/test_app.py": "from app.service import run\n\n\ndef test_run
 
 def g(repo, *a, author="Dev A"):
     return subprocess.run(["git", "-C", str(repo), "-c", f"user.name={author}", "-c", "user.email=dev@example.invalid", *a],
-                          check=True, capture_output=True, text=True).stdout
+                          check=True, capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
 
 
 def write(repo: Path, files: dict):
     for rel, text in files.items():
         p = repo / rel
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text)
+        p.write_text(text, encoding="utf-8")
 
 
 def push(repo, message, files: dict, author="Dev A"):

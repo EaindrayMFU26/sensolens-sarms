@@ -47,7 +47,7 @@ def main():
     ev = pd.read_parquet(d / "record/events.parquet") if (d / "record/events.parquet").exists() else pd.DataFrame()
     intro = {}
     if (d / "record/contracts.csv").exists():
-        for r in csv.DictReader(open(d / "record/contracts.csv")):
+        for r in csv.DictReader(open(d / "record/contracts.csv", encoding="utf-8")):
             if r["introduced_at"]:
                 intro[r["contract"]] = pd.Timestamp(r["introduced_at"]).tz_convert("UTC")
     samples = checks[["idx", "ts"]].drop_duplicates().sort_values("idx")
@@ -97,12 +97,12 @@ def main():
         (REPORTS / "exploratory").mkdir(parents=True, exist_ok=True)
         note = ["", "Exploratory, detection only: this repository fails selection criteria 5–7 and is not a subject; "
                 "its numbers are reported for what they show about repair behaviour, never used for drafts.", ""]
-        (REPORTS / "exploratory" / f"{name}{a.suffix}.md").write_text("\n".join(lines[:2] + note + lines[2:]))
+        (REPORTS / "exploratory" / f"{name}{a.suffix}.md").write_text("\n".join(lines[:2] + note + lines[2:]), encoding="utf-8")
         print("\n".join(lines[:16]))
         print(f"-> {REPORTS / 'exploratory' / (name + a.suffix + '.md')}")
         return
     (REPORTS / "awareness-gap-baseline").mkdir(parents=True, exist_ok=True)
-    (REPORTS / "awareness-gap-baseline" / f"{name}{a.suffix}.md").write_text("\n".join(lines))
+    (REPORTS / "awareness-gap-baseline" / f"{name}{a.suffix}.md").write_text("\n".join(lines), encoding="utf-8")
     row = {"repo": repo, "variant": a.suffix or "head_strict", "sampled": len(samples), "stride": stride,
            "edges": ep[["contract", "edge_from", "edge_to"]].drop_duplicates().shape[0],
            "episodes_after_contract": len(post), "repaired": len(rep),
@@ -110,9 +110,9 @@ def main():
            "median_gap_days": round(rep.gap_days.median(), 1) if len(rep) else "",
            "drops": drops, "exception_removal_commits": fixed.sha.nunique() if len(fixed) else 0}
     summary = REPORTS / "awareness-gap-baseline" / "summary.csv"
-    old = [r for r in csv.DictReader(open(summary))] if summary.exists() else []
+    old = [r for r in csv.DictReader(open(summary, encoding="utf-8"))] if summary.exists() else []
     old = [r for r in old if not (r["repo"] == repo and r["variant"] == row["variant"])] + [row]
-    with open(summary, "w", newline="") as fh:
+    with open(summary, "w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(row))
         w.writeheader()
         w.writerows(old)
@@ -128,8 +128,8 @@ def main():
         head.append(f"| {r['repo']} {'' if r['variant'] == 'head_strict' else '(' + r['variant'] + ')'} | {r['sampled']} | {r['edges']} | "
                     f"{r['episodes_after_contract']} | {r['repaired']} | {r['median_gap_commits'] or '–'} / {r['median_gap_days'] or '–'} | "
                     f"{r['drops']} | {r['exception_removal_commits']} |")
-    body = [s.read_text() for s in sections]
-    (REPORTS / "awareness-gap-baseline.md").write_text("\n".join(head + [""] + body))
+    body = [s.read_text(encoding="utf-8") for s in sections]
+    (REPORTS / "awareness-gap-baseline.md").write_text("\n".join(head + [""] + body), encoding="utf-8")
     print("\n".join(lines[:16]))
     print(f"-> {REPORTS / 'awareness-gap-baseline.md'}")
 

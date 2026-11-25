@@ -57,7 +57,7 @@ def load_policy(repo_dir: Path):
     p = Path(repo_dir) / ".rms" / "policy.yaml"
     pol = dict(DEFAULT_POLICY)
     if p.exists():
-        pol.update(yaml.safe_load(p.read_text()) or {})
+        pol.update(yaml.safe_load(p.read_text(encoding="utf-8")) or {})
     return pol
 
 
@@ -97,8 +97,8 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
     t0 = time.time()
     pol = policy or load_policy(repo_dir)
     sha = sha or git(repo_dir, "rev-parse", "HEAD").strip()
-    draft = json.loads((draft_dir / "result.json").read_text())
-    patch = (draft_dir / "patch.diff").read_text() if (draft_dir / "patch.diff").exists() else ""
+    draft = json.loads((draft_dir / "result.json").read_text(encoding="utf-8"))
+    patch = (draft_dir / "patch.diff").read_text(encoding="utf-8") if (draft_dir / "patch.diff").exists() else ""
     gate = {f"G{i}": {"line": f"G{i}", "pass": None, "evidence": None} for i in range(9)}
     trial_runs = []
     stop = None
@@ -106,7 +106,7 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
     try:
         files = _changed_files(patch)
         if patch.strip():
-            r = subprocess.run(["git", "-C", str(cand), "apply", "--whitespace=nowarn", "-"], input=patch, text=True, capture_output=True)
+            r = subprocess.run(["git", "-C", str(cand), "apply", "--whitespace=nowarn", "-"], input=patch, text=True, encoding="utf-8", errors="replace", capture_output=True)
             if r.returncode != 0:
                 gate["G0"]["pass"], gate["G0"]["evidence"] = False, {"error": "patch does not apply: " + r.stderr[-300:]}
                 stop = "G0"
@@ -130,7 +130,7 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
                 for f in _changed_files(author_diff):
                     if f not in cand_text:
                         p = cand / f
-                        cand_text[f] = p.read_text(errors="replace") if p.exists() else ""
+                        cand_text[f] = p.read_text(errors="replace", encoding="utf-8") if p.exists() else ""
                     if s_ in cand_text[f]:
                         found = True
                         break
@@ -140,7 +140,7 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
             author_tests = [f for f in _changed_files(author_diff) if any(re.search(p, f) for p in pol["test_paths"])]
             author_tests_ok = True
             if tests and author_tests:
-                r = subprocess.run(_test_cmd(tests) + author_tests, cwd=cand, capture_output=True, text=True, timeout=pol["test_timeout"])
+                r = subprocess.run(_test_cmd(tests) + author_tests, cwd=cand, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=pol["test_timeout"])
                 author_tests_ok = r.returncode == 0
                 trial_runs.append(f"G0:{hashlib.sha1(r.stdout.encode()).hexdigest()[:10]}")
             ok = not tests_touched and (kept == len(added_lines)) and author_tests_ok
@@ -204,7 +204,7 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
                             "commit", "-q", "-m", "sarms: candidate"], check=True, capture_output=True)
             fix_sha = git(cand, "rev-parse", "HEAD").strip()
             r = subprocess.run(["git", "-C", str(cand), "-c", "user.name=sensolens-sarms", "-c", "user.email=sensolens-sarms@sarms.invalid",
-                                "revert", "--no-edit", fix_sha], capture_output=True, text=True)
+                                "revert", "--no-edit", fix_sha], capture_output=True, text=True, encoding="utf-8", errors="replace")
             same = git(cand, "diff", sha, "--", ".", check=False).strip() == "" if r.returncode == 0 else False
             # back to the candidate state for the trials
             subprocess.run(["git", "-C", str(cand), "reset", "-q", "--hard", fix_sha], check=True, capture_output=True)
@@ -215,7 +215,7 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
         # ---- G3: full suite
         if stop is None:
             if tests:
-                r = subprocess.run(_test_cmd(tests), cwd=cand, capture_output=True, text=True, timeout=pol["test_timeout"])
+                r = subprocess.run(_test_cmd(tests), cwd=cand, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=pol["test_timeout"])
                 run_id = f"G3:{hashlib.sha1((r.stdout + r.stderr).encode()).hexdigest()[:10]}"
                 trial_runs.append(run_id)
                 ok = r.returncode == 0
@@ -228,7 +228,7 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
         # ---- G4: mutation score (mutmut if present)
         if stop is None:
             if shutil.which("mutmut") and files:
-                r = subprocess.run(["mutmut", "run", "--paths-to-mutate", ",".join(files), "--no-progress"], cwd=cand, capture_output=True, text=True, timeout=pol["test_timeout"])
+                r = subprocess.run(["mutmut", "run", "--paths-to-mutate", ",".join(files), "--no-progress"], cwd=cand, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=pol["test_timeout"])
                 m = re.search(r"(\d+)/(\d+)\s+.*killed", r.stdout)
                 score = int(m.group(1)) / max(int(m.group(2)), 1) if m else None
                 ok = score is not None and score >= pol["g4_floor"]
@@ -240,7 +240,7 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
                 stop = "G4"
         # ---- G8: clean run of the checker on the candidate
         if stop is None:
-            r = subprocess.run(["lint-imports"], cwd=cand, capture_output=True, text=True) if (cand / ".importlinter").exists() or (cand / "setup.cfg").exists() else None
+            r = subprocess.run(["lint-imports"], cwd=cand, capture_output=True, text=True, encoding="utf-8", errors="replace") if (cand / ".importlinter").exists() or (cand / "setup.cfg").exists() else None
             rules_ok = all(x["label"] not in VIOLATION or x.get("enforce") is False for x in after["rows"]) or len({(x["edge_from"], x["edge_to"]) for x in after["rows"] if x["label"] in VIOLATION}) < len(
                 {(x["edge_from"], x["edge_to"]) for x in before["rows"] if x["label"] in VIOLATION})
             ok = rules_ok and (r is None or r.returncode == 0 or "Contracts:" in (r.stdout + r.stderr))
@@ -263,7 +263,7 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
     out = rms_dir / "decisions"
     out.mkdir(parents=True, exist_ok=True)
     path = out / f"{sha}.json"
-    path.write_text(json.dumps(record, indent=1, default=str))
+    path.write_text(json.dumps(record, indent=1, default=str), encoding="utf-8")
     log(f"gate: {verdict}" + (f" (stopped at {stop})" if stop else " (G0-G8 pass)") + f" in {record['seconds']}s -> {path}")
     return record, path
 
@@ -271,7 +271,7 @@ def run_gate(repo_dir, sha, rules_dir, draft_dir, rms_dir, tests=None, policy=No
 def _salt(repo_dir: Path) -> str:
     for p in (repo_dir / ".salt", Path.cwd() / ".salt"):
         if p.exists():
-            return p.read_text().strip()
+            return p.read_text(encoding="utf-8").strip()
     return "sarms-dev-salt"
 
 

@@ -146,7 +146,7 @@ def main():
             sheet.to_csv("data/samples/rule_review.csv", index=False)
             lines.append(f"Review sheet written: data/samples/rule_review.csv ({len(sheet)} rules).")
     Path("reports").mkdir(exist_ok=True)
-    Path("reports/rule-viability.md").write_text("\n".join(lines) + "\n")
+    Path("reports/rule-viability.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
 
 
