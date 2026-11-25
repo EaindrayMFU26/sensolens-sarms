@@ -1,0 +1,31 @@
+# sarms's own architecture, checked with the tool sarms is built on: `uv run lint-imports`.
+# A higher layer may import a lower one, never the reverse; `|` separates independent siblings,
+# which may not import each other. docs/architecture.md draws the same map.
+
+[importlinter]
+root_package = sarms
+
+[importlinter:contract:layers]
+name = Layers: research and the product on top, core at the bottom
+type = layers
+layers =
+    sarms.__main__
+    sarms.cli
+    sarms.baseline | sarms.trackc
+    sarms.product
+    sarms.kernel
+    sarms.synthesize | sarms.verify
+    sarms.differ
+    sarms.rules
+    sarms.graph | sarms.ledger | sarms.mining
+    sarms.core
+
+[importlinter:contract:no-model-in-checks]
+name = Detection, verification and execution never import the model step
+type = forbidden
+source_modules =
+    sarms.differ
+    sarms.verify
+    sarms.kernel
+forbidden_modules =
+    sarms.synthesize
