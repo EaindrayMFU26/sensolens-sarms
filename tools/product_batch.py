@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
+import signal
 import subprocess
 import time
 from pathlib import Path
@@ -34,6 +36,33 @@ def append(out, row):
         if new:
             w.writeheader()
         w.writerow({k: row.get(k, "") for k in COLS})
+
+
+def kill_tree(pid):
+    """Stop a process and everything it started."""
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
+    else:
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def run_bounded(cmd, timeout):
+    """subprocess.run(cmd, timeout=...) that stops the whole process tree. `uv run` starts sarms as a child: killing
+    uv alone left sarms running, and on Windows subprocess.run then waited for it before raising TimeoutExpired."""
+    own_group = {} if os.name == "nt" else {"start_new_session": True}
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}          # the child writes UTF-8, which is what we decode
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                          errors="replace", env=env, **own_group) as p:
+        try:
+            out, err = p.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            kill_tree(p.pid)
+            out, err = p.communicate(timeout=60)              # the pipes close once the tree is gone
+            raise subprocess.TimeoutExpired(cmd, timeout, out, err) from None
+        return subprocess.CompletedProcess(cmd, p.returncode, out, err)
 
 
 def main():
@@ -66,7 +95,7 @@ def main():
                 cmd += ["--since", a.since]
             if a.tests:
                 cmd += ["--tests", a.tests]
-            p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=a.timeout)
+            p = run_bounded(cmd, a.timeout)
             rms = Path("data") / name / "rms"
             rms.mkdir(parents=True, exist_ok=True)
             (rms / "batch.log").write_text(p.stdout + "\n--- stderr ---\n" + p.stderr, encoding="utf-8")
