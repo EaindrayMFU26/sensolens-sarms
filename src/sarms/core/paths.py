@@ -9,6 +9,9 @@
 from __future__ import annotations
 
 import os
+import shutil
+import stat
+import sys
 from pathlib import Path
 
 DATA = Path("data")
@@ -29,12 +32,20 @@ def worktree_path(repo_dir, kind: str) -> Path:
 
 
 def repo_name(owner_repo: str) -> str:
-    value = str(owner_repo).strip().rstrip("/")
-    if "://" in value or value.startswith("git@"):
+    """The repository's name without owner, host or folders: `kedro` for kedro-org/kedro, for any URL of it and for
+    a checkout at C:/work/kedro. Clones (data/raw/<name>) and outputs (data/<name>/rms) are keyed on it, so every
+    form of one repository lands in the same folders and none of them points outside data/."""
+    value = str(owner_repo).strip()
+    if is_git_url(value):
         value = value.split("?", 1)[0].split("#", 1)[0]
-        value = value.rstrip("/").replace(":", "/", 1) if value.startswith("git@") else value
-        value = value.rstrip("/").split("/")[-1]
-    return value[:-4] if value.lower().endswith(".git") else value
+        value = value.replace(":", "/", 1) if value.startswith("git@") else value
+        name = value.rstrip("/").split("/")[-1]
+    else:
+        name = Path(value).resolve().name if value else ""
+    name = name[:-4] if name.lower().endswith(".git") else name
+    if not name or name in (".", ".."):
+        raise ValueError(f"no repository name in {owner_repo!r}")
+    return name
 
 
 def is_git_url(value: str) -> bool:
@@ -59,4 +70,16 @@ def sarms_data_paths(repo: str | os.PathLike[str]) -> list[Path]:
 
 def rms_dir(repo, out=None) -> Path:
     """Where the product writes for one repository: `out` when given, else data/<repo>/rms."""
-    return Path(out) if out else DATA / Path(repo).name / "rms"
+    return Path(out) if out else DATA / repo_name(str(repo)) / "rms"
+
+
+def remove_tree(path) -> None:
+    """shutil.rmtree that also removes read-only files. Git marks its object files read-only, and on Windows a plain
+    rmtree (or one with ignore_errors=True, which then leaves the folder behind) cannot delete them."""
+    def unlock_and_retry(func, target, _exc):
+        os.chmod(target, stat.S_IWRITE | stat.S_IREAD)
+        func(target)
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=unlock_and_retry)
+    else:  # Python 3.11: onexc does not exist yet
+        shutil.rmtree(path, onerror=unlock_and_retry)

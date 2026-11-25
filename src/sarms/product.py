@@ -15,7 +15,6 @@ import argparse
 import hashlib
 import json
 import shutil
-import stat
 import sys
 import time
 from pathlib import Path
@@ -23,7 +22,7 @@ from pathlib import Path
 import yaml
 
 from sarms.core.git import git, resolve_repo_input
-from sarms.core.paths import DATA, repo_name, rms_dir, sarms_data_paths
+from sarms.core.paths import DATA, remove_tree, repo_name, rms_dir, sarms_data_paths
 from sarms.differ.diff import diff_commit
 from sarms.kernel.apply import apply_decision, human_fixed
 from sarms.ledger.hypergraph import Ledger
@@ -257,12 +256,6 @@ def clean(repo, confirm=False, log=print):
     """Remove SARMS-generated data for one repository, never the remote repository."""
     if not confirm:
         raise SystemExit("nothing removed; rerun with `clean <git-url> --yes`")
-
-    def remove_tree(path):
-        def unlock_and_retry(func, target, _error):
-            Path(target).chmod(stat.S_IWRITE | stat.S_IREAD)
-            func(target)
-        shutil.rmtree(path, onerror=unlock_and_retry)
 
     removed = []
     for path in sarms_data_paths(repo):

@@ -10,7 +10,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from sarms.core.paths import RAW, is_git_url, repo_name
+from sarms.core.paths import RAW, is_git_url, remove_tree, repo_name
 
 
 def run(args, cwd=None, check=True) -> str:
@@ -35,8 +35,7 @@ def ensure_clone(owner_repo: str, checkout: bool = True) -> Path:
         if top and Path(top).resolve() == d.resolve():
             git(d, "fetch", "-q", "origin")
             return d
-        import shutil  # noqa: PLC0415
-        shutil.rmtree(d, ignore_errors=True)
+        remove_tree(d)  # raises if it cannot, instead of leaving a folder the clone below would then refuse
     RAW.mkdir(parents=True, exist_ok=True)
     url = str(owner_repo).strip()
     if not is_git_url(url):

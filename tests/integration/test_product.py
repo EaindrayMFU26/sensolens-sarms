@@ -1,6 +1,7 @@
 """The product end to end on the tiny repository: mine -> ledger -> certificates -> run (check, draft, gate, kernel) -> status."""
 import json
 import textwrap
+from pathlib import Path
 
 import pytest
 from subject_repo import g, make_subject, push
@@ -69,3 +70,26 @@ def test_git_url_resolves_to_named_checkout(tmp_path):
     assert repo_name("https://github.com/kedro-org/kedro.git") == "kedro"
     assert repo_name("git@github.com:kedro-org/kedro.git") == "kedro"
     assert resolve_repo_input(str(tmp_path)) == tmp_path.resolve()
+
+
+def test_ensure_clone_replaces_a_broken_folder_holding_read_only_files(tmp_path, monkeypatch):
+    """A folder at data/raw/<name> that is not a clone is deleted and cloned afresh, read-only git files included."""
+    import stat
+
+    from sarms.core.git import ensure_clone
+
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    g(origin, "init", "-q", "-b", "main")
+    (origin / "a.py").write_text("x = 1\n", encoding="utf-8")
+    g(origin, "add", "-A")
+    g(origin, "commit", "-qm", "one")
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)
+    pack = work / "data" / "raw" / "origin" / "sqlfluff" / ".git" / "objects" / "pack"   # another repo's leftovers
+    pack.mkdir(parents=True)
+    (pack / "pack-x.pack").write_bytes(b"x")
+    (pack / "pack-x.pack").chmod(stat.S_IREAD)
+    d = ensure_clone(origin.as_uri())
+    assert d == Path("data/raw/origin") and (d / "a.py").exists() and not (d / "sqlfluff").exists()
